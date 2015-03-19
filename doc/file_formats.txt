@@ -1,0 +1,142 @@
+
+File formats for SC4:
+
+SC4 uses tweetnacl-js as its crypto core.  These file formats are simply wrappers around the nacl output.  They are designed to be easily identifiable so that any of them can be provided as input and SC4 can identify them and do the "right thing" with them.
+
+There are three main file formats: encrypted files, binary bundles, and plain-text bundles.  Encrypted files are binary, but SC4 defines a simple conversion to a plain-text format (by base64-encoding the binary file).  The binary and plain-text bundle formats are different enough to warrant being considered different format.  The payload of encrypted files are binary bundles, while unencrypted signed data is packaged as plan-text bundles.  The rationale for this design is that SC4 is designed to be as transparent as possible for non-technical users, and so signed but unencrypted plain-text data should be readable without any decoding.
+
+The detailed file formats are:
+
+ENCRYPTED DATA
+
+The binary format for SC4 encrypted files is:
+
+Byte number	Description
+
+0-2		Magic number, always 0x482E1E.  (This is "SC4e" in base64.)
+3-5		Version number (currently all 0)
+6-11		Content length (excludes header, 6 bytes, big-endian)
+
+12-35		Nonce (24 bytes)
+36-67		Sender public key (32 bytes)
+68-N		Encrypted data, i.e. the output of nacl.secret_box
+
+The plain-text format for encrypted files is the binary file converted to base64 with line breaks inserted every 72 characters (though code should rely on this
+number being exact).  Thus, a plain-text SC4 encrypted file is always 7-bit clean ascii, and can be identified by the prefix "SC4e".
+
+The encrypted payload can in principle be anything, but SC4 always produces files whose payload is a binary bundle.
+
+BUNDLE FILES
+
+A bundle file is a collection of data bundled with associated metadata, specifically the data's MIME-type, length, an optional name (which is normally the name of the file that contained the data at the time it was processed) and an optional signature.
+
+There are two separate formats for bundle files, one binary, one plain text.
+
+The binary format for bundle files is:
+
+0-2		Magic number, always 0x482E1B.  (This is "SC4b" in base64.)
+3-5		Version number (currently all 0)
+6-11		Content length (excludes header, 6 bytes, big-endian
+12		File-name length (1 byte)
+13-N		File name
+N+1		MIME-type length (1 byte)
+N+2-M		MIME type
+1		Signature flag (0=not signed, 172=signed)
+172		Signature (only if signature flag is not zero, see below)
+M+1-P		Content
+
+NOTES
+
+1.  SC4 bundle files cannot represent file names (or mime types) longer than 255 characters.
+
+2.  The magic number for binary bundles converts to the mnemonic string "SC4b" when represented as Base64.  However, binary bundles are not normally converted to base64.  This is a legacy from a previous discarded design.
+
+The plain text format for bundle files is:
+
+X-SC4-bundle: [version] [content-length] [mime-type] [encoding] [file-name]
+[optional signature]
+
+[content]
+
+where
+
+[version] is the version number in decimal (currently 0)
+[content-length] is the content length in decimal
+[mime-type] is the mime type
+[encoding] is the content-transfer encoding (NOT the text encoding -- see note 1 below).  Currently the only support values are 'base64' and 'raw'
+[optional signature] is described below
+
+Example:
+
+X-SC4-bundle: 0 12 text/plain raw hello world.txt
+
+Hello world
+
+
+NOTES:
+
+1.  SC4 currently assumes that all plain-text bundles are encoded as UTF-8.  There are two reasons for this.  First, handling arbitrary unicode encodings would significantly increase the size of the code base and one of the design goals of SC4 was to keep the code size as small as possible to make it easier to audit.  And second, UTF-8 is the One True Encoding and everybody should use it.
+
+
+SIGNATURES
+
+SC4 signatures are NACL detached signatures.  As such, they are self-contained entities that are potentially useful separate from their associated signed content.  SC4 does not currently use detached signatures, but they have their own headers to allow for future expansion.
+
+As with bundle files, signatures have a separate binary and plain-text format.  Binary signatures look like this:
+
+Byte number	Description
+
+0-2		Magic number, always 0x482E2C.  (This is "SC4s" in base64.)
+3-5		Version number (currently all 0)
+6-11		Content length (excludes header, 6 bytes, big-endian)
+
+12-43		Signer public key (32 bytes)
+44-107		SHA512 hash of signed content (64 bytes)
+107-171		Ed25519 signature (64 bytes)
+
+Binary signatures are always 172 bytes long, which is the reason that the signature flag value in a signed binary bundle that indicates the presence of a signature is 172.
+
+The plain-text format for a signature is:
+
+X-SC4-sig: [version] [signer-pubkey-b64]
+[hash1-hex]
+[hash2-hex]
+[sig1-hex]
+[sig2-hex]
+
+Where:
+
+[version] is the version in decimal (currently 0)
+[signer-pubkey-b64] is the signer's public key encoded in base64
+[hash1-hex] is the first 32 bytes of the SHA512 hash of the signed content
+[hash2-hex] is the second 32 bytes of the SHA512 hash of the signed content
+[sig1-hex] is the first 32 bytes of the Ed25519 signature
+[sig2-hex] is the second 32 bytes of the Ed25519 signature
+[content] is the signed content (see below)
+
+All of the '-hex' values are in hexadecimal using capital letters A-F.
+
+Note that the plain-text signed format does not include the content length.  This is because plain-text signatures are visible to the end-user, and signatures are always embedded inside bundle files, which contain the content length, so including the content length in the signature is redundant.  The reason the content length IS included in binary signatures is that this redundancy is not visible to the end-user.  It also allows binary signatures to be more useful if they are ever used in a detached format in the futre.
+
+
+KEY FILES:
+
+There is one additional special file format in SC4 for sharing public keys.  Key files are always plain-text.  There is no binary format for a key file.  The format is:
+
+X-sc4-content-type: public-key
+From: [user identifier]
+Timestamp: [timestamp]
+
+[base64 encryption key]
+[base64 signing key]
+[base64 signature]
+
+where
+
+[user identifier] is free text, but will usually be the users name and/or email address
+
+[timestamp] is the time the key file was created in RFC1124 UTC format (i.e. what is produced by new Date().toUTCString().
+
+[encryption-key] and [signing key] are the obvious things, base64-encoded
+
+[signature] is the Ed25519 signature of the entire preceding content, base64-encoded, and split into two equal-length lines.

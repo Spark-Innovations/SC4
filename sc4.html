@@ -1,0 +1,97 @@
+<meta charset="UTF-8">
+
+<script src=jquery.js></script>
+<script src=nacl-fast.min.js></script>
+<script src=sc4.js></script>
+
+<link rel=stylesheet href=sc4.css>
+
+<div id=nojs class=toplevel style='display:block'>
+You appear to have Javascript disabled.  Javascript is required for this application.  Please enable it and reload this page.
+</div>
+
+<div id=initializing class=toplevel>
+Initializing... this should take less than one second.  If you can actually
+read this message, something has gone wrong.
+</div>
+
+<div id=no-localstorage class=toplevel>
+<h1>SC4 Error</h1>
+You appear to have private browsing mode enabled.  SC4 stores
+important information (your encryption keys) in your browser's
+localStorage, which is disabled when private browsing mode is turned
+on, so SC4 won't work.  To use SC4 please disable private browsing
+mode and reload this page.  If you are paranoid (and there's nothing wrong
+with being paranoid where security is concerned)  you can disconnect
+from the network after you have re-loaded this page.  SC4 is a
+standalone application and does not require a network connection.
+</div>
+
+<div id=initial-setup class=toplevel>
+<h1>Welcome to SC4!</h1>
+The first thing we need to do is provision you a set of keys.  This will
+be done automatically, but to help identify your key, please enter your
+email address.  This will only be stored locally in your browser; it will
+not be sent to our servers.  In fact, nothing in this version of SC4 will
+be sent to our servers.  It is a completely standalone application that
+just happens to run in a browser.  If you want to be extra paranoid, you
+can disconnect from the network before proceeding.
+<br><br>
+Please enter your email address:
+ <input type=text id=email>
+ <input type=button value=Submit onClick='sc4.initial_setup()'>
+</div>
+
+<div id=main class='toplevel'>
+  <div class='dropzone fullscreen'></div>
+  <div class='dropmsg'>
+    Drop file to process it
+  </div>
+  <h1>SC4</h1>
+  <h2>Secure Communications For Mere Mortals</h2>
+    Encrypt for:
+    <select id=recipient class=rx_menu>
+    </select> or
+    <input type=button value="Connect with a new user"
+	   onClick='sc4.export_my_key()'>
+    <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
+    <br><br>Drag-and-drop a file, or enter text:<br>
+    <textarea id=text rows=20></textarea>
+    <br>
+    Output to:
+    <input type=radio name=op1 value=email checked>Email
+    <input type=radio name=op1 value=download>Download
+    <span style='float:right'>
+      <input type=checkbox id=encrypt checked>Encrypt
+      <input type=checkbox id=sign>Sign
+      <input type=button value="Submit" onClick='sc4.encsign()'>
+      <input type=button value="Clear" onClick="$('#text').val('')">
+    </span>
+  </div>
+</div>
+
+<div id=write_check class=toplevel>
+<h1>Write a check</h1>
+Pay to the order of: <select id=pay_to class=rx_menu></select><br>
+Amount: <input id=check_amount type=text><br>
+Memo: <br>
+<textarea id=check_memo rows=5 cols=80></textarea>
+<br>
+<input type=button value="Send" onClick='sc4.write_check()'>
+<input type=button value='Cancel' onClick='sc4.show("main")'>
+</div>
+
+<div id=invitation style='display:none'>
+Hello,
+
+I would like to send you a secure message using SC4.  Please go to
+https://sc4.us/sc4.html, enter your email address, and then copy
+and paste the following text so that we can connect:
+
+</div>
+
+<div id=msg class=toplevel>
+  <div id=msgcontent></div>
+  <input type=button value='Dismiss' onClick='show("main")' style='float:right'>
+  <br><br><br>
+</div>
