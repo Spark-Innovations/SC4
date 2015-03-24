@@ -570,7 +570,7 @@ var sc4 = sc4 || {};
     var timestamp = Date.parse(l[2]);
     var age = Date.now() - timestamp;  // In milliseconds
     if (age<0) return msg('Invalid key (timestamp is in the future)');
-    if (age>two_years) msg('Invalid key (too old)');
+    if (age>two_years) return msg('Invalid key (too old)');
     var epk = l[3];
     var spk = l[4];
     var sig = unb64(l[5]+l[6]);
