@@ -664,8 +664,8 @@ var sc4 = sc4 || {};
     var sss = 'Signature status: <span style="color:' + sigcolor + '">' +
       html_escape(sigstatus) + '</span>';
     msgs.push(sss);
-    msgs.push(filename ? 'File name: ' + filename : '(No file name)');
-    msgs.push('File type: ' + mimetype);
+    msgs.push(filename ? 'File name: ' + html_escape(filename) : '(No file name)');
+    msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
     var link = make_download_link(filename, mimetype, content);
