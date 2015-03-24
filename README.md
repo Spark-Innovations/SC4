@@ -10,7 +10,7 @@ code base means easier auditability and fewer places that vulnerabilities
 can hide.
 
 2.  Smaller keys and signatures.  SC4 uses elliptic curves (specifically
-Curve25519 and Ed25519).  The keys for these algorithms are only 128
+Curve25519 and Ed25519).  The keys for these algorithms are only 256
 bits long, compared to 2048 bits (at least) for RSA keys with equivalent
 security.
 
