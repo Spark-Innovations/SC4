@@ -42,6 +42,15 @@ Please enter your email address:
  <input type=button value=Submit onClick='sc4.initial_setup()'>
 </div>
 
+<div id=generate_local_sc4 class=toplevel>
+<h1>Welcome to SC4!</h1>
+It appears that you are running this code from a local copy rather than
+from a server.  In order to be secure when running this way we need to
+embed your keys in your local copy of SC4 rather than storing them in
+localStorage.  To generate a copy of SC4 with embedded keys to run from
+a local file <a onClick='generate_local_sc4()'>click here</a>.
+</div>
+
 <div id=main class='toplevel'>
   <div class='dropzone fullscreen'></div>
   <div class='dropmsg'>

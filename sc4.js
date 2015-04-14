@@ -106,8 +106,8 @@ var sc4 = sc4 || {};
   }
 
   function hard_reset() {
-    localStorage[sk_key] = null;
-    localStorage[pk_key] = null;
+    delete localStorage[sk_key];
+    delete localStorage[pk_key];
   }
 
   function setup_keys() {
@@ -123,17 +123,26 @@ var sc4 = sc4 || {};
 
   function get_rx_email(recipient)  { return rx_keys[recipient][0]; }
 
+  var local_keys = null;
+
+  function running_from_local_file() {
+    return document.location.protocol.toLowerCase()=='file:';
+  }
+
   // Get secret keys from LocalStorage and put them in global my_keys
   // Secret keys are stored as a JSONified list of three base64 encoded values:
   // [Encryption secret key, encryption public key, signing key seed]
   function retrieve_my_keys() {
-    var keys = unjson(localStorage[sk_key]);
+    var keys = running_from_local_file() ? local_keys : localStorage[sk_key];
+    if (keys == undefined) return false;
+    keys = unjson(keys);
     my_keys['epk'] = unb64(keys[0]); // Encryption Public Key
     my_keys['esk'] = unb64(keys[1]); // Encryption Secret Key
     var seed = unb64(keys[2]);       // Seed for signing key
     var skp = nacl.sign.keyPair.fromSeed(seed);
     my_keys['spk'] = skp['publicKey'];
     my_keys['ssk'] = skp['secretKey'];
+    return true;
   }
 
   // Get receiver public keys from localStorage and set up global state
@@ -227,25 +236,41 @@ var sc4 = sc4 || {};
   // Determine if secret keys exist.  If not, start the initial setup
   // process, otherwise get stored keys and show main div.
   function generate_or_setup_keys() {
-    var mykeys = null;
-    try {
-      localStorage['sc4-test']='test';
-    } catch (e) {
-      show('no-localstorage');
-      throw('localStorage test failed');
+    if (running_from_local_file() & (local_keys==null)) {
+      return show('generate_local_sc4');
     }
     try {
-      mykeys = unjson(localStorage[sk_key]);
-    } catch(e) {}
-    if (!mykeys) {
+      retrieve_my_keys();
+      if (localStorage[pk_key]==undefined) {
+	reset_rx_keys();
+      }
+    } catch (e) {
+      return show('no-localstorage');
+    }
+    if (!retrieve_my_keys()) {
       $("#email").val(localStorage[email_key] || '');
-      $('#initializing').hide()
       show('initial-setup');
     } else {
       setup_keys();
       setup_rx_menu();
       show('main');
     }
+  }
+
+  function generate_local_sc4_aux(s) {
+    var ekp = nacl.box.keyPair();
+    var seed = nacl.randomBytes(32);
+    var skp = nacl.sign.keyPair.fromSeed(seed);
+    var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
+    keys = 'local_keys = json(' + json(keys) + ');';
+    s = s.replace('local_keys = null;', keys);
+    var filename = 'sc4_' + Math.round(Math.random()*1000000) + '.html';
+    export_as_download(filename, 'text/plain', s)
+  }
+
+  function generate_local_sc4() {
+    var url = document.location.href;
+    $.ajax(url, {'contentType':'text/plain'}).done(generate_local_sc4_aux);
   }
 
   // Main entry point.  Setup keys and drag-and-drop event handling.
