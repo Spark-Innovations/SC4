@@ -5,7 +5,7 @@
 
 var sc4 = sc4 || {};
 
-// (function() {
+(function() {
 
   // Global state
   var my_keys = {};
@@ -735,7 +735,8 @@ var sc4 = sc4 || {};
   sc4.export_my_key = export_my_key;
   sc4.encsign = process_text_box_data;
   sc4.write_check = write_check;
+  sc4.genlocal = generate_local_sc4;
 
-// })();
+})();
 
 $(sc4.init);

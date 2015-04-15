@@ -2,6 +2,7 @@
 
 <script src=jquery.js></script>
 <script src=nacl-fast.min.js></script>
+<script src=purify.js></script>
 <script src=sc4.js></script>
 
 <link rel=stylesheet href=sc4.css>
@@ -49,7 +50,7 @@ generate a customized version of SC4 that has your private keys embedded
 within the code rather in your browser's localStorage.
 <br><br>
 To generate a copy of SC4 with embedded keys to run from a local file
-<input type=button onClick='generate_local_sc4()' value='click here'>
+<input type=button onClick='sc4.genlocal()' value='click here'>
 <br><br>
 NOTE: It is strongly recommended that you run this in Firefox or Chrome
 and not Safari.  This is because Safari discards the suggested file name
