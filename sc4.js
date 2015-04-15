@@ -253,7 +253,7 @@ var sc4 = sc4 || {};
     } catch (e) {
       return show('no-localstorage');
     }
-    if (!retrieve_my_keys() | localStorage[email_key]==undefined) {
+    if (!retrieve_my_keys() || localStorage[email_key]==undefined) {
       $("#email").val(localStorage[email_key] || '');
       show('initial-setup');
     } else {
