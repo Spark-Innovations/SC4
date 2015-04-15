@@ -623,7 +623,7 @@ var sc4 = sc4 || {};
     if (!mimetype || (mimetype.slice(0,4)=='text')) {
       try {
 	content = bytes2string(content);
-	mimetype = 'text';
+	mimetype = mimetype || 'text/unknown';
       } catch(err) {
 	mimetype = 'unknown';
       }
@@ -701,10 +701,15 @@ var sc4 = sc4 || {};
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
     var link = make_download_link(filename, mimetype, content);
-    if (mimetype == 'text/plain') {
-      msgs.push('<div style="border: 1px solid black; padding: 10px"><pre>' + html_escape(content.slice(0,1000)) + '</pre></div>');
+    // Purify the preview link if the content it HTML
+    var plink = (mimetype != 'text/html') ? link :
+      make_download_link(filename, mimetype,  DOMPurify.sanitize(content));
+    if (mimetype.slice(0,4) == 'text' && mimetype != 'text/html') {
+      msgs.push('<div style="border: 1px solid black; padding: 10px"><pre>' +
+		html_escape(content.slice(0,1000)) + '</pre></div>');
     } else {
-      msgs.push('<iframe height=400px width=800px src=' + link.href + '></iframe>');
+      msgs.push('<iframe height=400px width=800px src=' + plink.href +
+		'></iframe>');
     }
     msgs.push('<br><br>');
     link.innerHTML='Download this file';
