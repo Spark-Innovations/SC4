@@ -219,14 +219,18 @@ var sc4 = sc4 || {};
     localStorage[email_key] = email;
 
     // Provision secret keys
-    var ekp = nacl.box.keyPair();
-    var seed = nacl.randomBytes(32);
-    var skp = nacl.sign.keyPair.fromSeed(seed);
-    var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
-    localStorage[sk_key] = json(keys);
+    if (!retrieve_my_keys()) {
+      var ekp = nacl.box.keyPair();
+      var seed = nacl.randomBytes(32);
+      var skp = nacl.sign.keyPair.fromSeed(seed);
+      var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
+      localStorage[sk_key] = json(keys);
+      if (!retrieve_my_keys()) {
+	this_should_never_happen("Key provisioning failed");
+      }
+    }
 
     // Initialize global state
-    retrieve_my_keys();
     reset_rx_keys();
     setup_keys();
     setup_rx_menu();
@@ -239,15 +243,17 @@ var sc4 = sc4 || {};
     if (running_from_local_file() & (local_keys==null)) {
       return show('generate_local_sc4');
     }
+    if (!running_from_local_file() & (local_keys!=null)) {
+      this_should_never_happen(
+	'Local keys found, but not running from a FILE: URL');
+    }
     try {
-      retrieve_my_keys();
-      if (localStorage[pk_key]==undefined) {
-	reset_rx_keys();
-      }
+      localStorage['sc4-test']='test';
+      delete localStorage['sc4-test'];
     } catch (e) {
       return show('no-localstorage');
     }
-    if (!retrieve_my_keys()) {
+    if (!retrieve_my_keys() | localStorage[email_key]==undefined) {
       $("#email").val(localStorage[email_key] || '');
       show('initial-setup');
     } else {
@@ -270,7 +276,8 @@ var sc4 = sc4 || {};
 
   function generate_local_sc4() {
     var url = document.location.href;
-    $.ajax(url, {'contentType':'text/plain'}).done(generate_local_sc4_aux);
+    $.ajaxSetup({dataType: 'html'}); // FF bug workaround
+    $.get(url, generate_local_sc4_aux);
   }
 
   // Main entry point.  Setup keys and drag-and-drop event handling.

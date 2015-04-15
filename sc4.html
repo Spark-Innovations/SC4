@@ -29,13 +29,12 @@ standalone application and does not require a network connection.
 
 <div id=initial-setup class=toplevel>
 <h1>Welcome to SC4!</h1>
-The first thing we need to do is provision you a set of keys.  This will
-be done automatically, but to help identify your key, please enter your
-email address.  This will only be stored locally in your browser; it will
-not be sent to our servers.  In fact, nothing in this version of SC4 will
-be sent to our servers.  It is a completely standalone application that
-just happens to run in a browser.  If you want to be extra paranoid, you
-can disconnect from the network before proceeding.
+
+To get started, please enter your email address.  This will only be
+used to identify your key, and it will only be stored locally in your
+browser.  It will only be sent to our server if you choose later
+to register your key with us.
+
 <br><br>
 Please enter your email address:
  <input type=text id=email>
@@ -46,9 +45,16 @@ Please enter your email address:
 <h1>Welcome to SC4!</h1>
 It appears that you are running this code from a local copy rather than
 from a server.  In order to be secure when running this way we need to
-embed your keys in your local copy of SC4 rather than storing them in
-localStorage.  To generate a copy of SC4 with embedded keys to run from
-a local file <a onClick='generate_local_sc4()'>click here</a>.
+generate a customized version of SC4 that has your private keys embedded
+within the code rather in your browser's localStorage.
+<br><br>
+To generate a copy of SC4 with embedded keys to run from a local file
+<input type=button onClick='generate_local_sc4()' value='click here'>
+<br><br>
+NOTE: It is strongly recommended that you run this in Firefox or Chrome
+and not Safari.  This is because Safari discards the suggested file name
+of locally generated downloads, but the file name needs to be randomized
+in order to better secure the embedded keys.
 </div>
 
 <div id=main class='toplevel'>
