@@ -241,7 +241,11 @@ var sc4 = sc4 || {};
   // process, otherwise get stored keys and show main div.
   function generate_or_setup_keys() {
     if (running_from_local_file() & (local_keys==null)) {
-      return show('generate_local_sc4');
+      if (sc4.genlocal_flag==undefined) {
+	return document.location='sc4z.html';
+      } else {
+	return show('generate_local_sc4');
+      }
     }
     if (!running_from_local_file() & (local_keys!=null)) {
       this_should_never_happen(

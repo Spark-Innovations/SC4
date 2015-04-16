@@ -12,6 +12,7 @@ ${TARGET}: jquery.js nacl-fast.min.js purify.js sc4.js sc4.css sc4.html
 	echo '</style>' >> ${TARGET}
 	echo '<script>' >> ${TARGET}
 	cat jquery.js nacl-fast.min.js purify.js sc4.js >> ${TARGET}
+	echo 'sc4.genlocal_flag = true;' >> ${TARGET}
 	echo '</script>' >> ${TARGET}
 	tail -n +9 sc4.html >> ${TARGET}
 

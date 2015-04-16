@@ -46,13 +46,15 @@ Please enter your email address:
 
 <div id=generate_local_sc4 class=toplevel>
 <h1>Welcome to SC4!</h1>
-It appears that you are running this code from a local copy rather than
-from a server.  In order to be secure when running this way we need to
+You are running this code from a local copy rather than
+from a server.  In order to be secure when running this way you need to
 generate a customized version of SC4 that has your private keys embedded
-within the code rather in your browser's localStorage.
+within the code instead of being stored in your browser.
 <br><br>
-To generate a copy of SC4 with embedded keys to run from a local file
-<input type=button onClick='sc4.genlocal()' value='click here'>
+To generate a copy of SC4 that you can run from a local file
+<input type=button onClick='sc4.genlocal()' value='click here'>.  Save
+the resulting file and then open it in your browser.  IMPORTANT: this file
+will have your keys embedded within it, so don't share it with anyone!
 <br><br>
 NOTE: It is strongly recommended that you run this in Firefox or Chrome
 and not Safari.  This is because Safari discards the suggested file name
