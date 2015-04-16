@@ -1,8 +1,9 @@
 ### SC4 - Secure Communications for Mere Mortals
 
-SC4 is a web application that provides secure encrypted communications and
-secure digital signatures.  It is intended to be a replacement for PGP/GPG.
-The main advantages that SC4 claims over PGP are:
+SC4 is a web application that provides secure encrypted communications
+and secure digital signatures.  It is intended to eventually be a
+replacement for PGP/GPG.  The main advantages that SC4 claims over PGP
+are:
 
 1.  Less code.  The cryptographic core of SC4 is only 33 kilobytes of
 minimized Javascript.  Compare that to 247kB for OpenPGP-JS.  A smaller
@@ -41,35 +42,73 @@ License</a>.
 
 ### Quickstart
 
-Download the code and open sc4.html in your favorite browser.  The code has
-been tested on Firefox, Chrome and Safari, but *not* Internet Explorer.  The
-code will run standalone.  You don't need to be connected to the internet.
+Because SC4 is a security application, there are some subtle issues
+that you need to be aware of before trying to run it yourself.  If you
+don't want to be bothered, there is a live demo version of SC4 running
+at [https://sc4.us/sc4.html](https://sc4.us/sc4.html).  If you don't
+want to trust this server you can, of course, run SC4 yourself.
+See the following section for details on how to do this.
 
 The first time you run SC4 it will ask for your email address.  Note that
 this is only used as an identifier for your key.  It is not shared with
 anyone until you share your public key.  Once you have entered your email
 address, SC4 will automatically provision you with a set of random keys.
 
-The first thing you need to do to use SC4 is to share public keys.  To share
-your key, click on the "Connect with a new user" button.  SC4 will
-automatically compose an email containining your public key.  Send this
-to the person you want to communicate with, and ask them to do the same.
+To encrypt or sign a file, simply drag-and-drop it into the
+application window, or you can type text content directly into the
+text area in the application window.  Whether the content is encrypted
+or signed or both is controlled by the check boxes at the bottom of
+the window.  The encrypted/signed content can be delivered either as a
+download file or directly to your native mail client.
 
-To install a public key, simply copy-and-paste the key (the text between
-the lines --- START KEY --- and --- END KEY ---) into the text box in the
-SC4 application.
+To decrypt a file or verify a signature, simply paste the encrypted or
+signed content into the text area.  SC4 will automatically regognize
+encrypted and signed content and do the Right Thing with it.
 
-SC4 performs four basic functions: encryption, decryption, signing, and
-signature verification.  In general, to perform any of these functions you
-just enter or copy-and-paste text into the text box, or drag-and-drop a file
-into the browser window.  SC4 should figure out what kind of file you have
-given it and automatically do the Right Thing.
+To share your public key, click on the "Connect with a new user"
+button.  SC4 will automatically compose an email containing your public
+key to send to the person you want to share encrypted data with.
 
-By default, SC4 will encrypt but not sign the data that you give it.
-Encryption is targeted so that only the person for whom a file is encrypted
-is able to decypt it.  This is the reason you need to install the public keys
-of the person you want to communicate with before you can encrypt a file for
-them.
+To install a public key that you receive from someone else, simply
+copy-and-paste the key (the text between the lines --- START KEY ---
+and --- END KEY ---) into the text box in the SC4 application.
+
+SC4 has been tested in Safari, Firefox and Chrome, but *not* IE.
+
+### Running SC4 yourself
+
+There are two ways to run SC4, either from an HTTP server, or directly
+from a local file.  The latter is, of course, more convenient, but making
+this secure is tricky.  This is because SC4 normally stores your keys in
+your browser's localStorage, and most browsers do not correctly implement
+same-origin policies for FILE: URLs.  The upshot is that it is trivial to
+craft malicious Javascript that can steal your SC4 keys if you run it from
+a FILE: URL.
+
+The solution to this problem is to generate a local copy of SC4 that has
+your keys embedded directly inside it.  Doing this involves two steps:
+
+1.  Run 'make' to generate a self-contained copy of SC4 that includes all
+of the Javascript and CSS in a single file called sc4z.html.
+
+2.  Open this file (sc4z.html) in your browser.  SC4 will
+automatically figure out that it is being run from a FILE: URL and
+will generate a copy of itself with embedded keys.  The generated file
+will have a randomized file name as an extra measure of protection
+(because it turns out to be easy to steal files from your computer if
+the attacker knows the file name).
+
+This is a bit cumbersome, but you only have to do it once.  Needless to
+say, you should not share your copy of SC4 with anyone.  (You can, however,
+safely share sc4z.html.)
+
+If you want to run SC4 from a server, simply copy the contents of the
+git repository to the server.  SC4 runs entirely in the browser.  The
+only reason to have a server in the loop is to provide an origin so
+that keys can safely be stored in localStorage.  Of course, this means
+that you MUST serve SC4 from an HTTPS URL, not an HTTP URL.  But if
+you didn't already know that then you should probably just use the
+live demo and not try to run SC4 yourself.
 
 ### Contact info
 
