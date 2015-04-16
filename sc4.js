@@ -513,9 +513,14 @@ var sc4 = sc4 || {};
     return "Valid signature from " + signer;
   }
 
+  var preamble = 'This is a secure message produced by SC4.  ' +
+    'See https://sc4.us/ for more information.\n\n';
+
+  var enc_pt_regex = new RegExp('^(' + preamble + ')?(\n){0,2}(SC4eAAAA[^]*)$');
+
   function sc4_typeof(thing) {
     if (typeof thing == 'string') {
-      if (/^SC4eAAAA/.test(thing)) return 'encrypted_pt';
+      if (enc_pt_regex.test(thing)) return 'encrypted_pt';
       if (bundle_regex.test(thing)) return 'bundle_pt';
       if (signature_regex.test(thing)) return 'signature_pt';
       if (key_regex.test(thing)) return "public_key";
@@ -636,9 +641,6 @@ var sc4 = sc4 || {};
     process_content(null, "text/plain", content);
   }
 
-  var preamble = 'This is a secure message produced by SC4.\n' +
-    'See http://sc4.us/ for more information.\n\n';
-
   function process_content(filename, mimetype, content) {
     var sc4_type = sc4_typeof(content);
     if (sc4_type) return process_sc4_file(filename, sc4_type, content);
@@ -661,8 +663,13 @@ var sc4 = sc4 || {};
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
   function process_sc4_file(filename, sc4_type, content) {
-    sc4.snoz=content;
     if (sc4_type == 'public_key') return import_key(content);
+
+    if (sc4_type=='encrypted_pt' && content.length>preamble.length &&
+	content.slice(0, preamble.length)==preamble) {
+      content = content.slice(preamble.length);
+    }
+
     var decrypt_op = decrypt_op_table[sc4_type];
     if (decrypt_op) {
       var l = decrypt_op(content);
