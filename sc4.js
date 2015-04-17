@@ -240,16 +240,23 @@ var sc4 = sc4 || {};
   // Determine if secret keys exist.  If not, start the initial setup
   // process, otherwise get stored keys and show main div.
   function generate_or_setup_keys() {
-    if (running_from_local_file() & (local_keys==null)) {
-      if (sc4.genlocal_flag==undefined) {
+    if (running_from_local_file()) {
+      if (sc4.genlocal_flag != true) {
 	return document.location='sc4z.html';
       } else {
-	return show('generate_local_sc4');
+	if (local_keys==null) {
+	  return show('generate_local_sc4');
+	}
       }
-    }
-    if (!running_from_local_file() & (local_keys!=null)) {
-      this_should_never_happen(
-	'Local keys found, but not running from a FILE: URL');
+    } else { // Running from a server
+      if (local_keys != null) {
+	return this_should_never_happen(
+	  'Local keys found, but not running from a FILE: URL');
+      }
+      if (sc4.genlocal_flag == true) {
+	show('generating_local_sc4');
+	return generate_local_sc4();
+      }
     }
     try {
       localStorage['sc4-test']='test';
@@ -278,8 +285,8 @@ var sc4 = sc4 || {};
     export_as_download(filename, 'text/plain', s)
   }
 
-  function generate_local_sc4() {
-    var url = document.location.href;
+  function generate_local_sc4(url) {
+    if (url==undefined) url = document.location.href;
     $.ajaxSetup({dataType: 'html'}); // FF bug workaround
     $.get(url, generate_local_sc4_aux);
   }
@@ -754,5 +761,3 @@ var sc4 = sc4 || {};
   sc4.genlocal = generate_local_sc4;
 
 })();
-
-$(sc4.init);
