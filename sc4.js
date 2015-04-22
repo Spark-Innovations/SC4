@@ -34,18 +34,6 @@ var sc4 = sc4 || {};
     }
   }
 
-  function to_bytes(thing) {
-    return (typeof thing == 'string') ? string2bytes(thing) : thing;
-  }
-
-  function split_into_lines(s, line_length) {
-    var len = line_length || 72;
-    var lines = [];
-    for (var i=0; i<s.length; i+=len) lines.push(s.slice(i, i+len));
-    lines.push('');
-    return lines.join('\n');
-  }
-
   // Convert a single byte to hexadecimal
   function hex(n) {
     return (n+0x100).toString(16).slice(-2).toUpperCase();
@@ -57,6 +45,37 @@ var sc4 = sc4 || {};
     var a = new Uint8Array(len);
     for (var i=0; i<len; i++) a[i] = parseInt(s.slice(i*2, i*2+2), 16);
     return a;
+  }
+
+  // Misc. utilities
+  function type_of(thing) {
+    return Object.prototype.toString.call(thing).slice(8, -1).toLowerCase();
+  }
+
+  function u8a_cmp(a1, a2) {
+    // NOTE! Not constant time!
+    for(var i=0; i<a1.length; i++) {
+      if (a1[i]>a2[i]) return 1;
+      if (a1[i]<a2[i]) return -1;
+    }
+    return 0;
+  }
+
+  function hash(thing) {
+    if (type_of(thing)=='string') thing = nacl.util.decodeUTF8(thing);
+    return nacl.hash(thing);
+  }
+
+  function to_bytes(thing) {
+    return (typeof thing == 'string') ? string2bytes(thing) : thing;
+  }
+
+  function split_into_lines(s, line_length) {
+    var len = line_length || 72;
+    var lines = [];
+    for (var i=0; i<s.length; i+=len) lines.push(s.slice(i, i+len));
+    lines.push('');
+    return lines.join('\n');
   }
 
   // Can you believe this is still not a built-in?
@@ -94,6 +113,62 @@ var sc4 = sc4 || {};
     return n;
   }
 
+  // Base58 encoding/decoding
+  // Adapted from http://cryptocoinjs.com/modules/misc/bs58/
+  var B58_ALPHABET =
+    '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  var B58_ALPHABET_MAP={};
+  for(var i=0; i<B58_ALPHABET.length; ++i) {
+    B58_ALPHABET_MAP[B58_ALPHABET[i]] = i;
+  }
+  var B58_BASE = 58;
+
+  function b58_digit(n) { return B58_ALPHABET[n]; }
+
+  function b58(buffer) {
+    var i, j, digits = [0];
+    for (i = 0; i < buffer.length; ++i) {
+      for (j = 0; j < digits.length; ++j) digits[j] <<= 8;
+      digits[0] += buffer[i];
+      var carry = 0;
+      for (j = 0; j < digits.length; ++j) {
+	digits[j] += carry;
+	carry = (digits[j] / B58_BASE) | 0;
+	digits[j] %= B58_BASE;
+      }
+      while (carry) {
+	digits.push(carry % B58_BASE);
+	carry = (carry / B58_BASE) | 0;
+      }
+    }
+    // deal with leading zeros
+    for (i = 0; buffer[i] === 0 && i < buffer.length - 1; ++i) digits.push(0);
+    return digits.map(b58_digit).reverse().join('');
+  }
+
+  function unb58(string) {
+    var i, j, bytes = [0];
+    for (i = 0; i < string.length; ++i) {
+      var c = string[i];
+      if (!(c in B58_ALPHABET_MAP)) throw new Error('Non-base58 character');
+      for (j = 0; j < bytes.length; ++j) bytes[j] *= B58_BASE;
+      bytes[0] += B58_ALPHABET_MAP[c];
+      var carry = 0;
+      for (j = 0; j < bytes.length; ++j) {
+	bytes[j] += carry;
+	carry = bytes[j] >> 8;
+	bytes[j] &= 0xff;
+      }
+      while (carry) {
+	bytes.push(carry & 0xff);
+	carry >>= 8;
+      }
+    }
+    // deal with leading zeros
+    for (i = 0; string[i] === '1' && i < string.length - 1; ++i) bytes.push(0);
+    return new Uint8Array(bytes.reverse());
+  }
+
   // Show a .toplevel div, hiding all the others
   function show(divname) {
     $('div.toplevel').hide();
@@ -108,6 +183,18 @@ var sc4 = sc4 || {};
   function hard_reset() {
     delete localStorage[sk_key];
     delete localStorage[pk_key];
+  }
+
+  function genkeys(seed) {
+    var seed = hash(seed).subarray(0,32);
+    var skpr = nacl.sign.keyPair.fromSeed(seed);
+    var h = nacl.hash(seed).subarray(0,32);
+    h[0] &= 248;
+    h[31] &= 127;
+    h[31] |= 64;
+    var ekpr = nacl.box.keyPair.fromSecretKey(h);
+    return { epk: ekpr.publicKey, esk: ekpr.secretKey,
+	     spk: skpr.publicKey, ssk: skpr.secretKey };
   }
 
   function setup_keys() {
@@ -735,7 +822,7 @@ var sc4 = sc4 || {};
     msg(msgs.join('<br>'));
     $('#text').val('');
   }
-  
+
   function write_check() {
     var payto = $("#pay_to").val();
     var amount = $("#check_amount").val();
@@ -749,6 +836,10 @@ var sc4 = sc4 || {};
       memo;
     export_as_email(payto, "Electronic check", sign_pt(to_bytes(s))+s);
     show('main');
+  }
+
+  function _export(l) {
+    for (var i=0; i<l.length; i++) sc4[l[i].name] = l[i];
   }
 
   sc4.init = init;
