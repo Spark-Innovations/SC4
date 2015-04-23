@@ -506,14 +506,14 @@ var sc4 = sc4 || {};
     var spk = my_keys.spk;
     var ssk = my_keys.ssk;
     var signature = nacl.sign.detached(hash, ssk);
-    var segments = ['X-SC4-signed: 0 ', b58(spk), '\n'];
+    var segments = ['X-SC4-signed: v0.1 ', b58(spk), '\n'];
     segments.push(split_into_lines(b32(hash), 52));
     segments.push(split_into_lines(b32(signature), 52));
     return segments.join('');
   }
 
   var signature_regex =
-    /X-SC4-signed: ([0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
+    /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
 
   function verify_signature_pt(s) {
     var l = signature_regex.exec(s);
