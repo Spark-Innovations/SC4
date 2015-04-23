@@ -437,10 +437,13 @@ var sc4 = sc4 || {};
 
   function encrypt(bytes, recipient) {
     var len = int2bytes(bytes.length, 6);
-    var nonce = nacl.randomBytes(nacl.box.nonceLength);
     var rx_pk = get_rx_key(recipient);
     var my_sk = my_keys.esk;
     var my_pk = my_keys.epk;
+    var nonce = nacl.randomBytes(nacl.box.nonceLength);
+    // Encode the key order in the nonce
+    nonce[0] = (nonce[0] & 0xFC) | u8a_cmp(my_pk, rx_pk) & 3;
+    console.log(hex([nonce[0]]));
     var cipherbytes = nacl.box(bytes, nonce, rx_pk, my_sk);
     return bufconcat([encrypted_header, version_header,
 		      len,  nonce, my_pk, cipherbytes]);
