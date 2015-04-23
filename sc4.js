@@ -503,27 +503,21 @@ var sc4 = sc4 || {};
     var spk = my_keys.spk;
     var ssk = my_keys.ssk;
     var signature = nacl.sign.detached(hash, ssk);
-    var segments = ['X-SC4-sig: 0 ', b64(spk), '\n'];
-    for (var i=0; i<32; i++) segments.push(hex(hash[i]));
-    segments.push('\n');
-    for (var i=32; i<64; i++) segments.push(hex(hash[i]));
-    segments.push('\n');
-    for (var i=0; i<32; i++) segments.push(hex(signature[i]));
-    segments.push('\n');
-    for (var i=32; i<64; i++) segments.push(hex(signature[i]));
-    segments.push('\n');
+    var segments = ['X-SC4-signed: 0 ', b58(spk), '\n'];
+    segments.push(split_into_lines(b32(hash), 52));
+    segments.push(split_into_lines(b32(signature), 52));
     return segments.join('');
   }
 
   var signature_regex =
-    /X-SC4-sig: ([0-9]+) (.{44})\n(.{64})\n(.{64})\n(.{64})\n(.{64})\n/;
+    /X-SC4-signed: ([0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
 
   function verify_signature_pt(s) {
     var l = signature_regex.exec(s);
     if (!l) return false;
-    var signer_key = unb64(l[2]);
-    var hash = unhex(l[3] + l[4]);
-    var signature = unhex(l[5] + l[6]);
+    var signer_key = unb58(l[2]);
+    var hash = unb32(l[3] + l[4]);
+    var signature = unb32(l[5] + l[6]);
     return [nacl.sign.detached.verify(hash, signature, signer_key),
 	    b64(signer_key), hash]
   }
