@@ -230,7 +230,7 @@ var sc4 = sc4 || {};
   // Get receiver public keys from localStorage and set up global state
   function retrieve_rx_keys() {
     rx_keys = unjson(localStorage[pk_key]).map(function(entry) {
-      return [entry[0], unb64(entry[1]), unb64(entry[2])]
+      return [entry[0], unb58(entry[1]), unb58(entry[2])]
     });
     // Maybe clear enc_key_map and sig_key_map first?
     for (var k in rx_keys) {
@@ -247,7 +247,7 @@ var sc4 = sc4 || {};
   // because JSON doesn't handle UInt8Arrays properly.
   function store_rx_keys() {
     var keys = rx_keys.map(function(entry) {
-      return [entry[0], b64(entry[1]), b64(entry[2])];
+      return [entry[0], b58(entry[1]), b58(entry[2])];
     });
     localStorage[pk_key] = json(keys);
   }
