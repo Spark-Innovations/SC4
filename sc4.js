@@ -215,20 +215,25 @@ var sc4 = sc4 || {};
   function running_from_local_file() {
     return document.location.protocol.toLowerCase()=='file:';
   }
-
+  
   // Get secret keys from LocalStorage and put them in global my_keys
-  // Secret keys are stored as a JSONified list of three base64 encoded values:
-  // [Encryption secret key, encryption public key, signing key seed]
   function retrieve_my_keys() {
     var keys = running_from_local_file() ? local_keys : localStorage[sk_key];
     if (keys == undefined) return false;
     keys = unjson(keys);
-    my_keys['epk'] = unb64(keys[0]); // Encryption Public Key
-    my_keys['esk'] = unb64(keys[1]); // Encryption Secret Key
-    var seed = unb64(keys[2]);       // Seed for signing key
-    var skp = nacl.sign.keyPair.fromSeed(seed);
-    my_keys['spk'] = skp['publicKey'];
-    my_keys['ssk'] = skp['secretKey'];
+    if (keys.length==3) {
+      // Old (deprecated) format with separate encryption and signing keys
+      // Stored as a JSONified list of three base64 encoded values:
+      // [Encryption secret key, encryption public key, signing key seed]
+      my_keys['epk'] = unb64(keys[0]); // Encryption Public Key
+      my_keys['esk'] = unb64(keys[1]); // Encryption Secret Key
+      var seed = unb64(keys[2]);       // Seed for signing key
+      var skp = nacl.sign.keyPair.fromSeed(seed);
+      my_keys['spk'] = skp['publicKey'];
+      my_keys['ssk'] = skp['secretKey'];
+      return true;
+    }
+    my_keys = genkeys(unb58(keys[0]));
     return true;
   }
 
@@ -277,7 +282,7 @@ var sc4 = sc4 || {};
 
   // Install a new public key
   function install_public_key(from, ekey, skey) {
-    var entry = [from, unb64(ekey), unb64(skey)];
+    var entry = [from, ekey, skey];
     if (entry[1].length != 32 || entry[2].length != 32) {
       msg('Invalid keys (this should never happen)');
     } else {
@@ -309,9 +314,7 @@ var sc4 = sc4 || {};
     if (!retrieve_my_keys()) {
       var ekp = nacl.box.keyPair();
       var seed = nacl.randomBytes(32);
-      var skp = nacl.sign.keyPair.fromSeed(seed);
-      var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
-      localStorage[sk_key] = json(keys);
+      localStorage[sk_key] = '["' + b58(seed) + '"]';
       if (!retrieve_my_keys()) {
 	this_should_never_happen("Key provisioning failed");
       }
@@ -614,7 +617,11 @@ var sc4 = sc4 || {};
   var preamble = 'This is a secure message produced by SC4.  ' +
     'See https://sc4.us/ for more information.\n\n';
 
-  var enc_pt_regex = new RegExp('^(' + preamble + ')?(\n){0,2}(SC4eAAAA[^]*)$');
+  var enc_pt_regex =
+    new RegExp('^(' + preamble + ')?(\n){0,2}(SC4eAAAA[^]*)$');
+
+  var key_regex =
+    /X-sc4-content-type: public-key (.*)\nFrom: (.*)\nTimestamp: (.*)\n(.{32,44})\n(.{32,44})\n(.{32,44})/;
 
   function sc4_typeof(thing) {
     if (typeof thing == 'string') {
@@ -669,18 +676,15 @@ var sc4 = sc4 || {};
   // SC4 content handling
 
   function export_my_key() {
-    var s = 'X-sc4-content-type: public-key\nFrom: ' +
+    var s = 'X-sc4-content-type: public-key v0.2\nFrom: ' +
       localStorage[email_key] + '\n' + "Timestamp: " +
       new Date().toUTCString() + '\n' +
-      b64(my_keys.epk) + '\n' + b64(my_keys.spk) + '\n';
-    var sig = b64(signature(s));
+      b58(my_keys.spk) + '\n';
+    var sig = b58(signature(s));
     s = $('#invitation').text() + '---START KEY---\n' + s
       + split_into_lines(sig, 44) + '---END KEY---\n';
     export_as_email('', 'I would like to send you a secure message', s);
   }
-
-  var key_regex =
-    /X-sc4-content-type: public-key\nFrom: (.*)\nTimestamp: (.*)\n(.{44})\n(.{44})\n(.{44})\n(.{44})/;
 
   function wordify(age) {
     if (age<5000) return 'a few seconds ago';
@@ -701,17 +705,19 @@ var sc4 = sc4 || {};
   function import_key(s) {
     var l = key_regex.exec(s);
     if (!l) return msg("Invalid key (bad format)");
-    var email = l[1];
-    var timestamp = Date.parse(l[2]);
+    var version = l[1];
+    if (version != 'v0.2') return msg('Incompatible version');
+    var email = l[2];
+    var timestamp = Date.parse(l[3]);
     var age = Date.now() - timestamp;  // In milliseconds
     if (age<0) return msg('Invalid key (timestamp is in the future)');
     if (age>two_years) return msg('Invalid key (too old)');
-    var epk = l[3];
-    var spk = l[4];
-    var sig = unb64(l[5]+l[6]);
-    var s = l[0].slice(0, l[0].length-89);
+    var spk = unb58(l[4]);
+    var epk = nacl.spk2epk(spk);
+    var sig = unb58(l[5]+l[6]);
+    var s = l[0].split('\n').slice(0,4).join('\n')+'\n';
     var hash = nacl.hash(string2bytes(s));
-    var flag = nacl.sign.detached.verify(hash, sig, unb64(spk));
+    var flag = nacl.sign.detached.verify(hash, sig, spk);
     if (!flag) return msg('Invalid key (bad signature)');
     if (confirm('This is a valid public key from ' + email + ' signed ' +
 		wordify(age) + '  Would you like to install it?')){
