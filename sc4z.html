@@ -1872,19 +1872,6 @@ var sc4 = sc4 || {};
     }
   }
 
-  // Convert a single byte to hexadecimal
-  function hex(n) {
-    return (n+0x100).toString(16).slice(-2).toUpperCase();
-  }
-
-  // Convert an arbitrary length hex string to a UInt8Array
-  function unhex(s) {
-    var len = s.length/2;
-    var a = new Uint8Array(len);
-    for (var i=0; i<len; i++) a[i] = parseInt(s.slice(i*2, i*2+2), 16);
-    return a;
-  }
-
   // Misc. utilities
   function type_of(thing) {
     return Object.prototype.toString.call(thing).slice(8, -1).toLowerCase();
@@ -1951,19 +1938,9 @@ var sc4 = sc4 || {};
     return n;
   }
 
-  // Base58 encoding/decoding
+  // Base-N encoding/decoding
   // Adapted from http://cryptocoinjs.com/modules/misc/bs58/
-  var B58_ALPHABET =
-    '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  var B58_ALPHABET_MAP={};
-  for(var i=0; i<B58_ALPHABET.length; ++i) {
-    B58_ALPHABET_MAP[B58_ALPHABET[i]] = i;
-  }
-  var B58_BASE = 58;
-
-  function b58_digit(n) { return B58_ALPHABET[n]; }
-
-  function b58(buffer) {
+  function baseN(buffer, alphabet, base) {
     var i, j, digits = [0];
     for (i = 0; i < buffer.length; ++i) {
       for (j = 0; j < digits.length; ++j) digits[j] <<= 8;
@@ -1971,26 +1948,29 @@ var sc4 = sc4 || {};
       var carry = 0;
       for (j = 0; j < digits.length; ++j) {
 	digits[j] += carry;
-	carry = (digits[j] / B58_BASE) | 0;
-	digits[j] %= B58_BASE;
+	carry = (digits[j] / base) | 0;
+	digits[j] %= base;
       }
       while (carry) {
-	digits.push(carry % B58_BASE);
-	carry = (carry / B58_BASE) | 0;
+	digits.push(carry % base);
+	carry = (carry / base) | 0;
       }
     }
     // deal with leading zeros
     for (i = 0; buffer[i] === 0 && i < buffer.length - 1; ++i) digits.push(0);
-    return digits.map(b58_digit).reverse().join('');
+    return digits.map(function(c){return alphabet[c];}).reverse().join('');
   }
 
-  function unb58(string) {
+  function unbaseN(string, alphabet, base) {
+    if (alphabet == undefined) alphabet = B58_ALPHABET;
+    if (base==undefined) base = alphabet.length;
     var i, j, bytes = [0];
     for (i = 0; i < string.length; ++i) {
       var c = string[i];
-      if (!(c in B58_ALPHABET_MAP)) throw new Error('Non-base58 character');
-      for (j = 0; j < bytes.length; ++j) bytes[j] *= B58_BASE;
-      bytes[0] += B58_ALPHABET_MAP[c];
+      for (j = 0; j < bytes.length; ++j) bytes[j] *= base;
+      var k = alphabet.indexOf(c);
+      if (k<0) throw new Error('Illegal character decoding base-N string');
+      bytes[0] += k;
       var carry = 0;
       for (j = 0; j < bytes.length; ++j) {
 	bytes[j] += carry;
@@ -2006,6 +1986,16 @@ var sc4 = sc4 || {};
     for (i = 0; string[i] === '1' && i < string.length - 1; ++i) bytes.push(0);
     return new Uint8Array(bytes.reverse());
   }
+
+  var B58_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  function b58(b) { return baseN(b, B58_CHARS, 58); }
+  function unb58(s) { return unbaseN(s, B58_CHARS, 58); }
+  function b32(b) { return baseN(b, B58_CHARS, 32); }
+  function unb32(s) { return unbaseN(s, B58_CHARS, 32); }
+
+  var HEX_CHARS = '0123456789ABCDEF';
+  function hex(b) { return baseN(b, HEX_CHARS, 16); }
+  function unhex(s) { return unbaseN(s.toUpperCase(), HEX_CHARS, 16); }
 
   // Show a .toplevel div, hiding all the others
   function show(divname) {
@@ -2053,27 +2043,32 @@ var sc4 = sc4 || {};
   function running_from_local_file() {
     return document.location.protocol.toLowerCase()=='file:';
   }
-
+  
   // Get secret keys from LocalStorage and put them in global my_keys
-  // Secret keys are stored as a JSONified list of three base64 encoded values:
-  // [Encryption secret key, encryption public key, signing key seed]
   function retrieve_my_keys() {
     var keys = running_from_local_file() ? local_keys : localStorage[sk_key];
     if (keys == undefined) return false;
     keys = unjson(keys);
-    my_keys['epk'] = unb64(keys[0]); // Encryption Public Key
-    my_keys['esk'] = unb64(keys[1]); // Encryption Secret Key
-    var seed = unb64(keys[2]);       // Seed for signing key
-    var skp = nacl.sign.keyPair.fromSeed(seed);
-    my_keys['spk'] = skp['publicKey'];
-    my_keys['ssk'] = skp['secretKey'];
+    if (keys.length==3) {
+      // Old (deprecated) format with separate encryption and signing keys
+      // Stored as a JSONified list of three base64 encoded values:
+      // [Encryption secret key, encryption public key, signing key seed]
+      my_keys['epk'] = unb64(keys[0]); // Encryption Public Key
+      my_keys['esk'] = unb64(keys[1]); // Encryption Secret Key
+      var seed = unb64(keys[2]);       // Seed for signing key
+      var skp = nacl.sign.keyPair.fromSeed(seed);
+      my_keys['spk'] = skp['publicKey'];
+      my_keys['ssk'] = skp['secretKey'];
+      return true;
+    }
+    my_keys = genkeys(unb58(keys[0]));
     return true;
   }
 
   // Get receiver public keys from localStorage and set up global state
   function retrieve_rx_keys() {
     rx_keys = unjson(localStorage[pk_key]).map(function(entry) {
-      return [entry[0], unb64(entry[1]), unb64(entry[2])]
+      return [entry[0], unb58(entry[1]), unb58(entry[2])]
     });
     // Maybe clear enc_key_map and sig_key_map first?
     for (var k in rx_keys) {
@@ -2090,7 +2085,7 @@ var sc4 = sc4 || {};
   // because JSON doesn't handle UInt8Arrays properly.
   function store_rx_keys() {
     var keys = rx_keys.map(function(entry) {
-      return [entry[0], b64(entry[1]), b64(entry[2])];
+      return [entry[0], b58(entry[1]), b58(entry[2])];
     });
     localStorage[pk_key] = json(keys);
   }
@@ -2115,7 +2110,7 @@ var sc4 = sc4 || {};
 
   // Install a new public key
   function install_public_key(from, ekey, skey) {
-    var entry = [from, unb64(ekey), unb64(skey)];
+    var entry = [from, ekey, skey];
     if (entry[1].length != 32 || entry[2].length != 32) {
       msg('Invalid keys (this should never happen)');
     } else {
@@ -2147,9 +2142,7 @@ var sc4 = sc4 || {};
     if (!retrieve_my_keys()) {
       var ekp = nacl.box.keyPair();
       var seed = nacl.randomBytes(32);
-      var skp = nacl.sign.keyPair.fromSeed(seed);
-      var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
-      localStorage[sk_key] = json(keys);
+      localStorage[sk_key] = '["' + b58(seed) + '"]';
       if (!retrieve_my_keys()) {
 	this_should_never_happen("Key provisioning failed");
       }
@@ -2282,10 +2275,13 @@ var sc4 = sc4 || {};
 
   function encrypt(bytes, recipient) {
     var len = int2bytes(bytes.length, 6);
-    var nonce = nacl.randomBytes(nacl.box.nonceLength);
     var rx_pk = get_rx_key(recipient);
     var my_sk = my_keys.esk;
     var my_pk = my_keys.epk;
+    var nonce = nacl.randomBytes(nacl.box.nonceLength);
+    // Encode the key order in the nonce
+    nonce[0] = (nonce[0] & 0xFC) | u8a_cmp(my_pk, rx_pk) & 3;
+    console.log(hex([nonce[0]]));
     var cipherbytes = nacl.box(bytes, nonce, rx_pk, my_sk);
     return bufconcat([encrypted_header, version_header,
 		      len,  nonce, my_pk, cipherbytes]);
@@ -2348,27 +2344,21 @@ var sc4 = sc4 || {};
     var spk = my_keys.spk;
     var ssk = my_keys.ssk;
     var signature = nacl.sign.detached(hash, ssk);
-    var segments = ['X-SC4-sig: 0 ', b64(spk), '\n'];
-    for (var i=0; i<32; i++) segments.push(hex(hash[i]));
-    segments.push('\n');
-    for (var i=32; i<64; i++) segments.push(hex(hash[i]));
-    segments.push('\n');
-    for (var i=0; i<32; i++) segments.push(hex(signature[i]));
-    segments.push('\n');
-    for (var i=32; i<64; i++) segments.push(hex(signature[i]));
-    segments.push('\n');
+    var segments = ['X-SC4-signed: v0.1 ', b58(spk), '\n'];
+    segments.push(split_into_lines(b32(hash), 52));
+    segments.push(split_into_lines(b32(signature), 52));
     return segments.join('');
   }
 
   var signature_regex =
-    /X-SC4-sig: ([0-9]+) (.{44})\n(.{64})\n(.{64})\n(.{64})\n(.{64})\n/;
+    /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
 
   function verify_signature_pt(s) {
     var l = signature_regex.exec(s);
     if (!l) return false;
-    var signer_key = unb64(l[2]);
-    var hash = unhex(l[3] + l[4]);
-    var signature = unhex(l[5] + l[6]);
+    var signer_key = unb58(l[2]);
+    var hash = unb32(l[3] + l[4]);
+    var signature = unb32(l[5] + l[6]);
     return [nacl.sign.detached.verify(hash, signature, signer_key),
 	    b64(signer_key), hash]
   }
@@ -2452,7 +2442,11 @@ var sc4 = sc4 || {};
   var preamble = 'This is a secure message produced by SC4.  ' +
     'See https://sc4.us/ for more information.\n\n';
 
-  var enc_pt_regex = new RegExp('^(' + preamble + ')?(\n){0,2}(SC4eAAAA[^]*)$');
+  var enc_pt_regex =
+    new RegExp('^(' + preamble + ')?(\n){0,2}(SC4eAAAA[^]*)$');
+
+  var key_regex =
+    /X-sc4-content-type: public-key (.*)\nFrom: (.*)\nTimestamp: (.*)\n(.{32,44})\n(.{32,44})\n(.{32,44})/;
 
   function sc4_typeof(thing) {
     if (typeof thing == 'string') {
@@ -2507,18 +2501,15 @@ var sc4 = sc4 || {};
   // SC4 content handling
 
   function export_my_key() {
-    var s = 'X-sc4-content-type: public-key\nFrom: ' +
+    var s = 'X-sc4-content-type: public-key v0.2\nFrom: ' +
       localStorage[email_key] + '\n' + "Timestamp: " +
       new Date().toUTCString() + '\n' +
-      b64(my_keys.epk) + '\n' + b64(my_keys.spk) + '\n';
-    var sig = b64(signature(s));
+      b58(my_keys.spk) + '\n';
+    var sig = b58(signature(s));
     s = $('#invitation').text() + '---START KEY---\n' + s
       + split_into_lines(sig, 44) + '---END KEY---\n';
     export_as_email('', 'I would like to send you a secure message', s);
   }
-
-  var key_regex =
-    /X-sc4-content-type: public-key\nFrom: (.*)\nTimestamp: (.*)\n(.{44})\n(.{44})\n(.{44})\n(.{44})/;
 
   function wordify(age) {
     if (age<5000) return 'a few seconds ago';
@@ -2539,17 +2530,19 @@ var sc4 = sc4 || {};
   function import_key(s) {
     var l = key_regex.exec(s);
     if (!l) return msg("Invalid key (bad format)");
-    var email = l[1];
-    var timestamp = Date.parse(l[2]);
+    var version = l[1];
+    if (version != 'v0.2') return msg('Incompatible version');
+    var email = l[2];
+    var timestamp = Date.parse(l[3]);
     var age = Date.now() - timestamp;  // In milliseconds
     if (age<0) return msg('Invalid key (timestamp is in the future)');
     if (age>two_years) return msg('Invalid key (too old)');
-    var epk = l[3];
-    var spk = l[4];
-    var sig = unb64(l[5]+l[6]);
-    var s = l[0].slice(0, l[0].length-89);
+    var spk = unb58(l[4]);
+    var epk = nacl.spk2epk(spk);
+    var sig = unb58(l[5]+l[6]);
+    var s = l[0].split('\n').slice(0,4).join('\n')+'\n';
     var hash = nacl.hash(string2bytes(s));
-    var flag = nacl.sign.detached.verify(hash, sig, unb64(spk));
+    var flag = nacl.sign.detached.verify(hash, sig, spk);
     if (!flag) return msg('Invalid key (bad signature)');
     if (confirm('This is a valid public key from ' + email + ' signed ' +
 		wordify(age) + '  Would you like to install it?')){
