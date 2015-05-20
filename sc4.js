@@ -453,6 +453,7 @@ var sc4 = sc4 || {};
     if (len + 84 != bytes.length) return null;
     var nonce = bytes.subarray(12, 36);
     var sender_key = bytes.subarray(36, 68);
+    if ((nonce [0] & 3) != u8a_cmp(sender_key, my_keys.epk)) return null;
     var cipherbytes = bytes.subarray(68);
     var content = nacl.box.open(cipherbytes, nonce, sender_key, my_keys.esk);
     if (!content) return null;
