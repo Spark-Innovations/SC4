@@ -361,7 +361,7 @@ var sc4 = sc4 || {};
     var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
     keys = 'local_keys = json(' + json(keys) + ');';
     s = s.replace('local_keys = null;', keys);
-    var filename = 'sc4_' + Math.round(Math.random()*1000000) + '.html';
+    var filename = 'sc4_' + b58(nacl.randomBytes(10)) + '.html';
     export_as_download(filename, 'text/plain', s)
   }
 
