@@ -664,14 +664,18 @@ var sc4 = sc4 || {};
 
   // SC4 content handling
 
-  function export_my_key() {
+  function export_my_key_string() {
     var s = 'X-sc4-content-type: public-key v0.2\nFrom: ' +
       localStorage[email_key] + '\n' + "Timestamp: " +
       new Date().toUTCString() + '\n' +
       b58(my_keys.spk) + '\n';
     var sig = b58(signature(s));
-    s = $('#invitation').text() + '---START KEY---\n' + s
-      + split_into_lines(sig, 44) + '---END KEY---\n';
+    return s + split_into_lines(sig, 44);
+  }
+
+  function export_my_key() {
+    var s = $('#invitation').text() + '---START KEY---\n' +
+      export_my_key_string() + '---END KEY---\n';
     export_as_email('', 'I would like to send you a secure message', s);
   }
 
