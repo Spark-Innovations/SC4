@@ -575,7 +575,7 @@ var sc4 = sc4 || {};
   }
 
   var bundle_regex =
-    /X-SC4-bundle: ([0-9]+) ([0-9]+) (\S+) (\S+) (.*)\n([^]*?\n)\n([^]*)/;
+    /X-SC4-bundle: ([0-9]+) ([0-9]+) (\S+) (\S+) (.*)\n([^]*?\n)?\n([^]*)/;
 
   function unbundle_pt(s) {
     var l = bundle_regex.exec(s);
