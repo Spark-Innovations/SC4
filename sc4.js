@@ -266,7 +266,10 @@ var sc4 = sc4 || {};
     for (var k in rx_keys) {
       var email = rx_keys[k][0];
       var esc_email = html_escape(email);
-      menu.append('<option value="' + k + '">' + esc_email + "</option>");
+      var keyfp = b58(rx_keys[k][2]).slice(0,8);
+      menu.append('<option value="' + k + '">' +
+		  esc_email + ' (' + keyfp +')' +
+		  "</option>");
     }
   }
 
