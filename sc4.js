@@ -375,6 +375,9 @@ var sc4 = sc4 || {};
 
   // Main entry point.  Setup keys and drag-and-drop event handling.
   function init() {
+    if (window.top !== window) {
+      return(document.write("Sorry, can't run SC4 inside a frame."));
+    }
     $("#nojs").hide();
     show('initializing');
     $('#main').on('dragenter', dragEnter);
