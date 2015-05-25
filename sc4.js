@@ -906,13 +906,13 @@ var sc4 = sc4 || {};
     for (var i=0; i<l.length; i++) sc4[l[i].name] = l[i];
   }
 
-  sc4.init = init;
-  sc4.show = show;
   sc4.reset = hard_reset;
-  sc4.initial_setup = initial_setup;
-  sc4.export_my_key = export_my_key;
   sc4.encsign = process_text_box_data;
-  sc4.write_check = write_check;
   sc4.genlocal = generate_local_sc4;
+  sc4.export_key = export_my_key_string;
+  sc4.email_regex = email_regex;
+  _export([init, show, msg, initial_setup, export_my_key,
+           write_check, sign_pt, process_content,
+           export_as_email, b58, unb58])
 
 })();
