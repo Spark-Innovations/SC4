@@ -695,6 +695,13 @@ var sc4 = sc4 || {};
 
   var two_years = 1000 * 60 * 60 * 24 * 365 * 2;
 
+  function find_rx_key_for_pk(pk) {
+    for (var i=0; i<rx_keys.length; i++) {
+      if (nacl.verify(pk, rx_keys[i][2])) return rx_keys[i];
+    }
+    return null;
+  }
+
   function import_key(s) {
     var l = key_regex.exec(s);
     if (!l) return msg("Invalid key (bad format)");
@@ -712,6 +719,9 @@ var sc4 = sc4 || {};
     var hash = nacl.hash(string2bytes(s));
     var flag = nacl.sign.detached.verify(hash, sig, spk);
     if (!flag) return msg('Invalid key (bad signature)');
+    if (find_rx_key_for_pk(spk)) {
+      return alert("You have already installed this key.");
+    }
     if (confirm('This is a valid public key from ' + email + ' signed ' +
 		wordify(age) + '  Would you like to install it?')){
       install_public_key(email, epk, spk);
