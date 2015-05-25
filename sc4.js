@@ -769,6 +769,25 @@ var sc4 = sc4 || {};
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
+  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpg',
+    'image/gif', 'image/png'];
+  var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
+
+  function member(s, l) {
+    for (var i=0; i<l.length; i++) {
+      if (l[i]==s) return true;
+    }
+    return false;
+  }
+
+  function mimetype_category(s) {
+    s = s.toLowerCase();
+    if (s=='text/plain') return 'text';
+    if (member(s, safe_mime_types)) return 'safe';
+    if (member(s, sanitize_mime_types)) return 'sanitize';
+    return 'unknown';
+  }
+
   function process_sc4_file(filename, sc4_type, content) {
     if (sc4_type == 'public_key') return import_key(content);
 
@@ -814,15 +833,31 @@ var sc4 = sc4 || {};
     msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
+
+    // Make sure the preview data is safe to display
+    var pv_content = content;
+    var pv_mimetype = mimetype;
+    var mtcat = mimetype_category(mimetype);
+    if (mtcat=='sanitize') {
+      pv_content = DOMPurify.sanitize(
+	content, {FORBID_ATTR: ['href', 'xlink:href', 'src', 'action']});
+      pv_mimetype = 'text/plain; charset=utf-8';
+    } else if (mtcat=='text') {
+      pv_content = html_escape(content.slice(0,1000));
+      pv_mimetype = 'text/plain; charset=utf-8';
+    } else if (mtcat!='safe') {
+      pv_content = '[No preview available -- content may be unsafe!]'
+      pv_mimetype = 'text/plain; charset=utf-8';
+    }
+
     var link = make_download_link(filename, mimetype, content);
-    // Purify the preview link if the content it HTML
-    var plink = (mimetype != 'text/html') ? link :
-      make_download_link(filename, mimetype,  DOMPurify.sanitize(content));
-    if (mimetype.slice(0,4) == 'text' && mimetype != 'text/html') {
+
+    if (member(mtcat, ['text','sanitize'])) {
       msgs.push('<div style="border: 1px solid black; padding: 10px"><pre>' +
-		html_escape(content.slice(0,1000)) + '</pre></div>');
+		pv_content + '</pre></div>');
     } else {
-      msgs.push('<iframe height=400px width=800px src=' + plink.href +
+      var pv_link = make_download_link(filename, pv_mimetype, pv_content);
+      msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
 		'></iframe>');
     }
     msgs.push('<br><br>');
