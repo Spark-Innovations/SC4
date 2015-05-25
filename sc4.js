@@ -305,7 +305,6 @@ var sc4 = sc4 || {};
 
     // Provision secret keys
     if (!retrieve_my_keys()) {
-      var ekp = nacl.box.keyPair();
       var seed = nacl.randomBytes(32);
       localStorage[sk_key] = '["' + b58(seed) + '"]';
       if (!retrieve_my_keys()) {
