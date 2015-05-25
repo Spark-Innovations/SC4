@@ -763,12 +763,21 @@ var sc4 = sc4 || {};
     var result = bundle_op(filename, mimetype, content, sign_flag);
     if (encrypt_flag) result = encrypt_pt(result, recipient);
     result = preamble + result;
-    if ($('input[name=op1]:checked').val()=='email') {      
-      export_as_email(get_rx_email(recipient), 'Secure message', result);
+    var delivery_mode = $('input[name=op1]:checked').val();
+    if (delivery_mode=='email') {
+       export_as_email(get_rx_email(recipient), 'Secure message', result);
+    } else if (delivery_mode == 'download') {
+       if (filename == null) filename = 'unknown.txt';
+       export_as_download(filename + '.sc4', 'text/sc4', result);
+    } else if (delivery_mode == 'upload') {
+      sc4.upload(result, get_rx_email(recipient));
     } else {
-      if (filename == null) filename = 'unknown.txt';
-      export_as_download(filename + '.sc4', 'text/sc4', result);
-    }
+      this_should_never_happen("Unknown delivery mode: " + delivery_mode);
+     }
+   }
+  
+  sc4.upload = function() {
+    msg("Upload delivery is not implemented in this version of SC4.");
   }
 
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
