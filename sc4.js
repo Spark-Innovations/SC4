@@ -464,7 +464,8 @@ var sc4 = sc4 || {};
     if (!content) return null;
     if (content.length != len) return null;
     sender_key = b64(sender_key);
-    return [content, sender_key, enc_key_map[sender_key]];
+    var sender_email = enc_key_map[sender_key];
+    return [content, sender_key, sender_email];
   }
 
   function encrypt_pt(bytes, recipient) {
@@ -564,7 +565,7 @@ var sc4 = sc4 || {};
     var content = bytes.subarray(idx);
     if (content_len != content.length) console.log("Content length mismatch");
     if (mimetype.slice(0,4)=='text') content = bytes2string(content);
-    return [filename, mimetype, content, sigcheck(content, sig)];
+    return [filename, mimetype, content, sig];
   }
 
   function bundle_pt(filename, mimetype, content, sigflag) {
@@ -592,7 +593,7 @@ var sc4 = sc4 || {};
     if (encoding == 'base64') {
       content = unb64(content.split('\n').join(''));
     }
-    return [filename, mimetype, content, sigcheck(content,sig)];
+    return [filename, mimetype, content, sig];
   }
 
   function sigcheck(content, sig) {
@@ -601,9 +602,10 @@ var sc4 = sc4 || {};
     var content_hash = nacl.hash(to_bytes(content));
     if (!nacl.verify(sig[2], content_hash)) return "Hash mismatch";    
     var sigkey = sig[1];
-    var signer = sig_key_map[sigkey];
-    if (!signer) return "Uknown signer: " + sigkey;
-    return "Valid signature from " + signer;
+    var signer_email = sig_key_map[sigkey];
+    var keyfp = b58(unb64(sigkey)).slice(0,8);
+    if (!signer_email) return 'Signed by an unknown party (' + keyfp + ')';
+    return 'Valid signature from ' + signer_email + '(' + keyfp + ')';
   }
 
   var preamble = 'This is a secure message produced by SC4.  ' +
@@ -805,26 +807,30 @@ var sc4 = sc4 || {};
       if (!l) return msg("Decryption failed");
       content = l[0];
       sc4_type = sc4_typeof(content);
-      var sender_key = l[1];
+      var encrypter_pk = unb64(l[1]);
       var sender_email = l[2];
     }
-    var bundle_op = unbundle_op_table[sc4_type];
-    if (bundle_op) {
-      var l = bundle_op(content);
+    var unbundle_op = unbundle_op_table[sc4_type];
+    if (unbundle_op) {
+      var l = unbundle_op(content);
       var filename = l[0];
       var mimetype = l[1];
       content = l[2];
-      var sigstatus = l[3];
+      var sig = l[3];
+      var signer_pk = sig ? unb64(sig[1]) : null;
+      var sigstatus = sigcheck(content, sig);
     } else {
       return msg('Unknown file format: ' + sc4_type);
     }
 
     // Present results
 
-    var msgs = ["Success."];
-    if (decrypt_op) {
-      msgs.push('This message was encrypted by ' +
-		html_escape(sender_email) + '(' + sender_key + ')')
+    var msgs = ["Message was processed successfully."];
+    if (decrypt_op && sender_email) {
+      msgs.push('This message was encrypted by ' + html_escape(sender_email));
+    } else if (decrypt_op) {
+      msgs.push('<span style="color:red">This message was encrypted by an ' +
+		'unknown party (' + b58(encrypter_pk).slice(0,8) + ')</span>');
     } else {
       msgs.push("This message was <span style='color:red'>NOT ENCRYPTED</span>.");
     }
@@ -832,7 +838,18 @@ var sc4 = sc4 || {};
     var sss = 'Signature status: <span style="color:' + sigcolor + '">' +
       html_escape(sigstatus) + '</span>';
     msgs.push(sss);
-    msgs.push(filename ? 'File name: ' + html_escape(filename) : '(No file name)');
+
+    // Make sure encryption and signing keys match if both exist
+    var key_mismatch = signer_pk && encrypter_pk &&
+      !nacl.verify(encrypter_pk, nacl.spk2epk(signer_pk));
+    if (key_mismatch) {
+      msgs.push(
+	'<span style="color:red">NOTE: This message was signed using ' +
+	  'a different key than the one used to encrypted it.</span>'
+      );
+    }
+    msgs.push(filename ? 'File name: ' + html_escape(filename) :
+	      '<span style="color:red">No file name</span>');
     msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
