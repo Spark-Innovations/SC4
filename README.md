@@ -45,7 +45,7 @@ License</a>.
 Because SC4 is a security application, there are some subtle issues
 that you need to be aware of before trying to run it yourself.  If you
 don't want to be bothered, there is a live demo version of SC4 running
-at [https://sc4.us/sc4.html](https://sc4.us/sc4.html).  If you don't
+at [https://sc4.us/sc4](https://sc4.us/sc4).  If you don't
 want to trust this server you can, of course, run SC4 yourself.
 See the following section for details on how to do this.
 
