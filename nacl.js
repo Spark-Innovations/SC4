@@ -1153,6 +1153,7 @@ nacl.sign.signatureLength = crypto_sign_BYTES;
 
 // Convert a signing public key to an encryption public key
 nacl.spk2epk = function(spk) {
+  checkArrayTypes(spk);
   var n=gf(), d=gf();
   unpack25519(n, spk);
   Z(d, gf1, n);
