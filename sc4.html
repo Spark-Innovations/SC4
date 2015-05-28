@@ -1,7 +1,8 @@
+<!doctype html>
 <meta charset="UTF-8">
 
 <script src=jquery.js></script>
-<script src=nacl.js></script>
+<script src=nacl-fast.js></script>
 <script src=purify.js></script>
 <script src=sc4.js></script>
 
@@ -15,6 +16,14 @@ $(sc4.init);
 
 <div id=nojs class=toplevel style='display:block'>
 You appear to have Javascript disabled.  Javascript is required for this application.  Please enable it and reload this page.
+</div>
+
+<div id=msie class=toplevel>
+Sorry, SC4 does not currently work with Microsoft Internet Explorer.
+Please use
+<a href=https://www.mozilla.org/en-US/firefox/new/>Firefox</a> instead.
+(SC4 also works with Chrome and Safari, but Firefox is a better choice
+from a security point of view.)
 </div>
 
 <div id=initializing class=toplevel>
@@ -77,25 +86,24 @@ Generating a local copy of SC4 with embedded keys...
   </div>
   <h1>SC4</h1>
   <h2>Secure Communications For Mere Mortals</h2>
-    Encrypt for:
-    <select id=recipient class=rx_menu>
-    </select> or
-    <input type=button value="Connect with a new user"
-	   onClick='sc4.export_my_key()'>
-    <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
-    <br><br>Drag-and-drop a file, or enter text:<br>
-    <textarea id=text rows=20></textarea>
-    <br>
-    Output to:
-    <input type=radio name=op1 value=email checked>Email
-    <input type=radio name=op1 value=download>Download
-    <span style='float:right'>
-      <input type=checkbox id=encrypt checked>Encrypt
-      <input type=checkbox id=sign>Sign
-      <input type=button value="Submit" onClick='sc4.encsign()'>
-      <input type=button value="Clear" onClick="$('#text').val('')">
-    </span>
-  </div>
+  Encrypt for:
+  <select id=recipient class=rx_menu>
+  </select> or
+  <input type=button value="Connect with a new user"
+	 onClick='sc4.export_my_key()'>
+  <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
+  <br><br>Drag-and-drop a file, or enter text:<br>
+  <textarea id=text rows=20></textarea>
+  <br>
+  Output to:
+  <input type=radio name=op1 value=email checked>Email
+  <input type=radio name=op1 value=download>Download
+  <span style='float:right'>
+    <input type=checkbox id=encrypt checked>Encrypt
+    <input type=checkbox id=sign>Sign
+    <input type=button value="Submit" onClick='sc4.encsign()'>
+    <input type=button value="Clear" onClick="$('#text').val('')">
+  </span>
 </div>
 
 <div id=write_check class=toplevel>

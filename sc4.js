@@ -378,7 +378,12 @@ var sc4 = sc4 || {};
     if (window.top !== window) {
       return(document.write("Sorry, can't run SC4 inside a frame."));
     }
-    $("#nojs").hide();
+    if ((window.navigator.userAgent.indexOf("MSIE")>0) ||
+	(window.navigator.userAgent.indexOf("Trident")>0)) {
+      document.getElementById("nojs").style.display='none';
+      document.getElementById("msie").style.display='block';
+      return;
+    }
     show('initializing');
     $('#main').on('dragenter', dragEnter);
     $('.dropzone').on('dragover', stopEvents);
@@ -517,6 +522,11 @@ var sc4 = sc4 || {};
     segments.push(split_into_lines(b32(signature), 52));
     return segments.join('');
   }
+
+
+  // For Windows, might need:
+  // re=/\r\n|\n\r|\n|\r/g;
+  // s.replace(re,"\n")
 
   var signature_regex =
     /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
@@ -915,6 +925,7 @@ var sc4 = sc4 || {};
     for (var i=0; i<l.length; i++) sc4[l[i].name] = l[i];
   }
 
+  sc4.init = init; // Because MSIE doesn't support function.name
   sc4.reset = hard_reset;
   sc4.encsign = process_text_box_data;
   sc4.genlocal = generate_local_sc4;
