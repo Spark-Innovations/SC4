@@ -518,8 +518,8 @@ var sc4 = sc4 || {};
     var ssk = my_keys.ssk;
     var signature = nacl.sign.detached(hash, ssk);
     var segments = ['X-SC4-signed: v0.1 ', b58(spk), '\n'];
-    segments.push(split_into_lines(b32(hash), 52));
-    segments.push(split_into_lines(b32(signature), 52));
+    segments.push(split_into_lines(hex(hash), 64));
+    segments.push(split_into_lines(b58(signature), 44));
     return segments.join('');
   }
 
@@ -529,16 +529,23 @@ var sc4 = sc4 || {};
   // s.replace(re,"\n")
 
   var signature_regex =
-    /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
+    /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{64})\n(.{64})\n(.{44})\n(.{20,44})\n/;
 
   function verify_signature_pt(s) {
     var l = signature_regex.exec(s);
     if (!l) return false;
     var signer_key = unb58(l[2]);
-    var hash = unb32(l[3] + l[4]);
-    var signature = unb32(l[5] + l[6]);
+    var hash = unhex(l[3] + l[4]);
+    var signature = unb58(l[5] + l[6]);
     return [nacl.sign.detached.verify(hash, signature, signer_key),
 	    b64(signer_key), hash]
+  }
+  
+  function combine4sig(filename, mimetype, content) {
+    var sigfilename = (filename==null) ? '-' : filename;
+    var s = hex(hash(content)).toLowerCase() + '  ' +
+      sigfilename + '\n' + mimetype + '\n';
+    return s;
   }
 
   function bundle(filename, mimetype, content, sigflag) {
@@ -548,7 +555,7 @@ var sc4 = sc4 || {};
     if (mimetype.length>255) mimetype = mimetype.slice(0,255);
     if (typeof content == 'string') content = string2bytes(content);
     var len = int2bytes(content.length, 6);
-    var sig = sigflag ? sign(content) : [];
+    var sig = sigflag ? sign(combine4sig(filename, mimetype, content)) : [];
     return bufconcat([bundle_header, version_header, len,
 		      [filename.length], string2bytes(filename),
 		      [mimetype.length], string2bytes(mimetype),
@@ -579,25 +586,31 @@ var sc4 = sc4 || {};
   }
 
   function bundle_pt(filename, mimetype, content, sigflag) {
+    if (filename==null) filename='';
     var is_string = (typeof content == 'string');
     var encoding = is_string ? 'raw' : 'base64';
-    var sig = sigflag ? sign_pt(content) : '';
+    var sig = sigflag ? sign_pt(combine4sig(filename, mimetype, content)) : '';
     if (!is_string) content = split_into_lines(b64(content));
-    var segments = ['X-SC4-bundle: 0 ', content.length, ' ', mimetype, ' ',
-      encoding, ' ', filename, '\n', sig, '\n', content]
+    var segments = ['X-SC4-bundle: 0 ', content.length, ' ', encoding,
+      '\nX-SC4-filename: ', filename, '\nX-SC4-mimetype: ', mimetype,
+      '\n', sig, '\n', content]
     return segments.join('');
   }
 
-  var bundle_regex =
-    /X-SC4-bundle: ([0-9]+) ([0-9]+) (\S+) (\S+) (.*)\n([^]*?\n)?\n([^]*)/;
+  var bundle_regex = new RegExp([
+    'X-SC4-bundle: ([0-9]+) ([0-9]+) (raw|base64)',
+    'X-SC4-filename: ([^]*?)',
+    'X-SC4-mimetype: ([^]*?)',
+    '(X-SC4-signed: (?:.*\\n){5})?',
+    '([^]*)$'].join('\n'));
 
   function unbundle_pt(s) {
     var l = bundle_regex.exec(s);
     var version = l[1];
     var content_length = l[2];
-    var mimetype = l[3];
-    var encoding = l[4];
-    var filename = l[5];
+    var encoding = l[3];
+    var filename = l[4];
+    var mimetype = l[5];
     var sig = l[6] ? verify_signature_pt(l[6]) : null;
     var content = l[7];
     if (encoding == 'base64') {
@@ -837,7 +850,8 @@ var sc4 = sc4 || {};
       content = l[2];
       var sig = l[3];
       var signer_pk = sig ? unb64(sig[1]) : null;
-      var sigstatus = sigcheck(content, sig);
+      var sigcontent = combine4sig(filename, mimetype, content);
+      var sigstatus = sigcheck(sigcontent, sig);
     } else {
       return msg('Unknown file format: ' + sc4_type);
     }

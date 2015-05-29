@@ -61,9 +61,9 @@ it can't hurt.
 BUNDLE FILES
 
 A bundle file is a collection of data bundled with associated
-metadata, specifically the data's MIME-type, length, an optional name
-(which is normally the name of the file that contained the data at the
-time it was processed) and an optional signature.
+metadata, specifically the data's MIME-type, length, file name
+(which may be empty if the data did not originate from a file)
+and an optional signature.
 
 There are two separate formats for bundle files, one binary, one plain text.
 
@@ -80,19 +80,15 @@ N+2-M		MIME type
 172		Signature (only if signature flag is not zero, see below)
 M+1-P		Content
 
-NOTES
-
-1.  SC4 bundle files cannot represent file names (or mime types)
+NOTE:  SC4 bundle files cannot represent file names (or mime types)
 longer than 255 characters.
 
-2.  The magic number for binary bundles converts to the mnemonic
-string "SC4b" when represented as Base64.  However, binary bundles are
-not normally converted to base64.  This is a legacy from a previous
-discarded design.
 
 The plain text format for bundle files is:
 
-X-SC4-bundle: [version] [content-length] [mime-type] [encoding] [file-name]
+X-SC4-bundle: [version] [content-length] [encoding]
+X-SC4-filename: [file-name]
+X-SC4-mimetype: [mime-type]
 [optional signature]
 
 [content]
@@ -101,27 +97,49 @@ where
 
 [version] is the version number in decimal (currently 0)
 [content-length] is the content length in decimal
+[encoding] is the content-transfer encoding, either 'raw' or 'base64'
+[file-name] is the file name (can be blank)
 [mime-type] is the mime type
-[encoding] is the content-transfer encoding
-  (NOTE: This is NOT the character encoding -- see note 1 below).
-  Currently the only support values or [encoding] are 'base64' and 'raw'
 [optional signature] is described below
 
 Example:
 
-X-SC4-bundle: 0 12 text/plain raw hello world.txt
+X-SC4-bundle: 0 12 raw
+X-SC4-filename: hello.txt
+X-SC4-mimetype: text/plain
 
 Hello world
 
 
 NOTES:
 
-1.  SC4 currently assumes that all plain-text bundles are encoded as
-UTF-8.  There are two reasons for this.  First, handling arbitrary
-unicode encodings would significantly increase the size of the code
-base and one of the design goals of SC4 was to keep the code size as
-small as possible to make it easier to audit.  And second, UTF-8 is
-the One True Encoding and everybody should use it.
+1.  Only UTF-8 text files may be transferred using 'raw' encoding.
+Any other data MUST be encoded using base64.
+
+2.  If a bundle contains an optional signature, the content that is
+signed is NOT the raw data.  Instead, the signature applies to the
+following:
+
+[sha512sum-hex]  [file-name]
+[mime-type]
+
+Where:
+
+[sha512sum-hex] is the sha512 sum of the actual content being signed
+represented as a hexadecimal string using lower-case letters
+
+[file-name] and [mime-type] are the obvious things.
+
+Note that the [sha512sum-hex] is separated from [file-name] by two
+spaces, and [file-name] is separated from [mime-type] by a newline.  The
+rationale for this somewhat eccentric design is to allow the hash of the
+signed content to be independently computed using the following simple
+bash script:
+
+{ shasum -a 512 [file-name]; echo [mime-type]; } | shasum -a 512
+
+Separating the hash from the file type using two spaces reflects the
+output format of the shasum program.
 
 
 SIGNATURES
@@ -151,7 +169,7 @@ presence of a signature is 172.
 
 The plain-text format for a signature is:
 
-X-SC4-sig: [version] [signer-pubkey-b58]
+X-SC4-signed: [version] [signer-pubkey-b58]
 [hash1-b32]
 [hash2-b32]
 [sig1-b32]
