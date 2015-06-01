@@ -1771,6 +1771,7 @@ nacl.sign.signatureLength = crypto_sign_BYTES;
 
 // Convert a signing public key to an encryption public key
 nacl.spk2epk = function(spk) {
+  checkArrayTypes(spk);
   var n=gf(), d=gf();
   unpack25519(n, spk);
   Z(d, gf1, n);
@@ -2067,6 +2068,7 @@ var sc4 = sc4 || {};
 
   // Get receiver public keys from localStorage and set up global state
   function retrieve_rx_keys() {
+    if (localStorage[pk_key]==undefined) reset_rx_keys();
     rx_keys = unjson(localStorage[pk_key]).map(function(entry) {
       return [entry[0], unb58(entry[1]), unb58(entry[2])]
     });
@@ -2104,7 +2106,10 @@ var sc4 = sc4 || {};
     for (var k in rx_keys) {
       var email = rx_keys[k][0];
       var esc_email = html_escape(email);
-      menu.append('<option value="' + k + '">' + esc_email + "</option>");
+      var keyfp = b58(rx_keys[k][2]).slice(0,8);
+      menu.append('<option value="' + k + '">' +
+		  esc_email + ' (' + keyfp +')' +
+		  "</option>");
     }
   }
 
@@ -2140,7 +2145,6 @@ var sc4 = sc4 || {};
 
     // Provision secret keys
     if (!retrieve_my_keys()) {
-      var ekp = nacl.box.keyPair();
       var seed = nacl.randomBytes(32);
       localStorage[sk_key] = '["' + b58(seed) + '"]';
       if (!retrieve_my_keys()) {
@@ -2199,7 +2203,8 @@ var sc4 = sc4 || {};
     var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
     keys = 'local_keys = json(' + json(keys) + ');';
     s = s.replace('local_keys = null;', keys);
-    var filename = 'sc4_' + Math.round(Math.random()*1000000) + '.html';
+    var filename = 'SC4_' + b58(nacl.randomBytes(10)) + '.html';
+    s = '<!-- Save this file as "' + filename + '" -->\n' + s;
     export_as_download(filename, 'text/plain', s)
   }
 
@@ -2211,7 +2216,15 @@ var sc4 = sc4 || {};
 
   // Main entry point.  Setup keys and drag-and-drop event handling.
   function init() {
-    $("#nojs").hide();
+    if (window.top !== window) {
+      return(document.write("Sorry, can't run SC4 inside a frame."));
+    }
+    if ((window.navigator.userAgent.indexOf("MSIE")>0) ||
+	(window.navigator.userAgent.indexOf("Trident")>0)) {
+      document.getElementById("nojs").style.display='none';
+      document.getElementById("msie").style.display='block';
+      return;
+    }
     show('initializing');
     $('#main').on('dragenter', dragEnter);
     $('.dropzone').on('dragover', stopEvents);
@@ -2280,8 +2293,7 @@ var sc4 = sc4 || {};
     var my_pk = my_keys.epk;
     var nonce = nacl.randomBytes(nacl.box.nonceLength);
     // Encode the key order in the nonce
-    nonce[0] = (nonce[0] & 0xFC) | u8a_cmp(my_pk, rx_pk) & 3;
-    console.log(hex([nonce[0]]));
+    nonce[0] = (nonce[0] & 0xFC) | (u8a_cmp(my_pk, rx_pk) & 3);
     var cipherbytes = nacl.box(bytes, nonce, rx_pk, my_sk);
     return bufconcat([encrypted_header, version_header,
 		      len,  nonce, my_pk, cipherbytes]);
@@ -2293,11 +2305,22 @@ var sc4 = sc4 || {};
     var nonce = bytes.subarray(12, 36);
     var sender_key = bytes.subarray(36, 68);
     var cipherbytes = bytes.subarray(68);
+    if ((nonce[0] & 3) != (u8a_cmp(sender_key, my_keys.epk) & 3)) {
+      // This message was not encrypted for us, maybe was encrypted by us
+      for (var i=0; i<rx_keys.length; i++) {
+	var content = nacl.box.open(cipherbytes, nonce, rx_keys[i][1],
+	  my_keys.esk);
+	if (content) {
+	  return [content, b64(my_keys.epk), "Me for " + rx_keys[i][0]];
+	}
+      }
+    }
     var content = nacl.box.open(cipherbytes, nonce, sender_key, my_keys.esk);
     if (!content) return null;
     if (content.length != len) return null;
     sender_key = b64(sender_key);
-    return [content, sender_key, enc_key_map[sender_key]];
+    var sender_email = enc_key_map[sender_key];
+    return [content, sender_key, sender_email];
   }
 
   function encrypt_pt(bytes, recipient) {
@@ -2345,22 +2368,34 @@ var sc4 = sc4 || {};
     var ssk = my_keys.ssk;
     var signature = nacl.sign.detached(hash, ssk);
     var segments = ['X-SC4-signed: v0.1 ', b58(spk), '\n'];
-    segments.push(split_into_lines(b32(hash), 52));
-    segments.push(split_into_lines(b32(signature), 52));
+    segments.push(split_into_lines(hex(hash), 64));
+    segments.push(split_into_lines(b58(signature), 44));
     return segments.join('');
   }
 
+
+  // For Windows, might need:
+  // re=/\r\n|\n\r|\n|\r/g;
+  // s.replace(re,"\n")
+
   var signature_regex =
-    /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n(.{32,52})\n/;
+    /X-SC4-signed: ([v.0-9]+) (.{32,52})\n(.{64})\n(.{64})\n(.{44})\n(.{20,44})\n/;
 
   function verify_signature_pt(s) {
     var l = signature_regex.exec(s);
     if (!l) return false;
     var signer_key = unb58(l[2]);
-    var hash = unb32(l[3] + l[4]);
-    var signature = unb32(l[5] + l[6]);
+    var hash = unhex(l[3] + l[4]);
+    var signature = unb58(l[5] + l[6]);
     return [nacl.sign.detached.verify(hash, signature, signer_key),
 	    b64(signer_key), hash]
+  }
+  
+  function combine4sig(filename, mimetype, content) {
+    var sigfilename = (filename==null) ? '-' : filename;
+    var s = hex(hash(content)).toLowerCase() + '  ' +
+      sigfilename + '\n' + mimetype + '\n';
+    return s;
   }
 
   function bundle(filename, mimetype, content, sigflag) {
@@ -2370,7 +2405,7 @@ var sc4 = sc4 || {};
     if (mimetype.length>255) mimetype = mimetype.slice(0,255);
     if (typeof content == 'string') content = string2bytes(content);
     var len = int2bytes(content.length, 6);
-    var sig = sigflag ? sign(content) : [];
+    var sig = sigflag ? sign(combine4sig(filename, mimetype, content)) : [];
     return bufconcat([bundle_header, version_header, len,
 		      [filename.length], string2bytes(filename),
 		      [mimetype.length], string2bytes(mimetype),
@@ -2397,35 +2432,41 @@ var sc4 = sc4 || {};
     var content = bytes.subarray(idx);
     if (content_len != content.length) console.log("Content length mismatch");
     if (mimetype.slice(0,4)=='text') content = bytes2string(content);
-    return [filename, mimetype, content, sigcheck(content, sig)];
+    return [filename, mimetype, content, sig];
   }
 
   function bundle_pt(filename, mimetype, content, sigflag) {
+    if (filename==null) filename='';
     var is_string = (typeof content == 'string');
     var encoding = is_string ? 'raw' : 'base64';
-    var sig = sigflag ? sign_pt(content) : '';
+    var sig = sigflag ? sign_pt(combine4sig(filename, mimetype, content)) : '';
     if (!is_string) content = split_into_lines(b64(content));
-    var segments = ['X-SC4-bundle: 0 ', content.length, ' ', mimetype, ' ',
-      encoding, ' ', filename, '\n', sig, '\n', content]
+    var segments = ['X-SC4-bundle: 0 ', content.length, ' ', encoding,
+      '\nX-SC4-filename: ', filename, '\nX-SC4-mimetype: ', mimetype,
+      '\n', sig, '\n', content]
     return segments.join('');
   }
 
-  var bundle_regex =
-    /X-SC4-bundle: ([0-9]+) ([0-9]+) (\S+) (\S+) (.*)\n([^]*?\n)\n([^]*)/;
+  var bundle_regex = new RegExp([
+    'X-SC4-bundle: ([0-9]+) ([0-9]+) (raw|base64)',
+    'X-SC4-filename: ([^]*?)',
+    'X-SC4-mimetype: ([^]*?)',
+    '(X-SC4-signed: (?:.*\\n){5})?',
+    '([^]*)$'].join('\n'));
 
   function unbundle_pt(s) {
     var l = bundle_regex.exec(s);
     var version = l[1];
     var content_length = l[2];
-    var mimetype = l[3];
-    var encoding = l[4];
-    var filename = l[5];
+    var encoding = l[3];
+    var filename = l[4];
+    var mimetype = l[5];
     var sig = l[6] ? verify_signature_pt(l[6]) : null;
     var content = l[7];
     if (encoding == 'base64') {
       content = unb64(content.split('\n').join(''));
     }
-    return [filename, mimetype, content, sigcheck(content,sig)];
+    return [filename, mimetype, content, sig];
   }
 
   function sigcheck(content, sig) {
@@ -2434,9 +2475,10 @@ var sc4 = sc4 || {};
     var content_hash = nacl.hash(to_bytes(content));
     if (!nacl.verify(sig[2], content_hash)) return "Hash mismatch";    
     var sigkey = sig[1];
-    var signer = sig_key_map[sigkey];
-    if (!signer) return "Uknown signer: " + sigkey;
-    return "Valid signature from " + signer;
+    var signer_email = sig_key_map[sigkey];
+    var keyfp = b58(unb64(sigkey)).slice(0,8);
+    if (!signer_email) return 'Signed by an unknown party (' + keyfp + ')';
+    return 'Valid signature from ' + signer_email + '(' + keyfp + ')';
   }
 
   var preamble = 'This is a secure message produced by SC4.  ' +
@@ -2500,14 +2542,18 @@ var sc4 = sc4 || {};
 
   // SC4 content handling
 
-  function export_my_key() {
+  function export_my_key_string() {
     var s = 'X-sc4-content-type: public-key v0.2\nFrom: ' +
       localStorage[email_key] + '\n' + "Timestamp: " +
       new Date().toUTCString() + '\n' +
       b58(my_keys.spk) + '\n';
     var sig = b58(signature(s));
-    s = $('#invitation').text() + '---START KEY---\n' + s
-      + split_into_lines(sig, 44) + '---END KEY---\n';
+    return s + split_into_lines(sig, 44);
+  }
+
+  function export_my_key() {
+    var s = $('#invitation').text() + '---START KEY---\n' +
+      export_my_key_string() + '---END KEY---\n';
     export_as_email('', 'I would like to send you a secure message', s);
   }
 
@@ -2527,6 +2573,13 @@ var sc4 = sc4 || {};
 
   var two_years = 1000 * 60 * 60 * 24 * 365 * 2;
 
+  function find_rx_key_for_pk(pk) {
+    for (var i=0; i<rx_keys.length; i++) {
+      if (nacl.verify(pk, rx_keys[i][2])) return rx_keys[i];
+    }
+    return null;
+  }
+
   function import_key(s) {
     var l = key_regex.exec(s);
     if (!l) return msg("Invalid key (bad format)");
@@ -2544,6 +2597,9 @@ var sc4 = sc4 || {};
     var hash = nacl.hash(string2bytes(s));
     var flag = nacl.sign.detached.verify(hash, sig, spk);
     if (!flag) return msg('Invalid key (bad signature)');
+    if (find_rx_key_for_pk(spk)) {
+      return alert("You have already installed this key.");
+    }
     if (confirm('This is a valid public key from ' + email + ' signed ' +
 		wordify(age) + '  Would you like to install it?')){
       install_public_key(email, epk, spk);
@@ -2580,16 +2636,44 @@ var sc4 = sc4 || {};
     var result = bundle_op(filename, mimetype, content, sign_flag);
     if (encrypt_flag) result = encrypt_pt(result, recipient);
     result = preamble + result;
-    if ($('input[name=op1]:checked').val()=='email') {      
-      export_as_email(get_rx_email(recipient), 'Secure message', result);
+    var delivery_mode = $('input[name=op1]:checked').val();
+    if (delivery_mode=='email') {
+       export_as_email(get_rx_email(recipient), 'Secure message', result);
+    } else if (delivery_mode == 'download') {
+       if (filename == null) filename = 'unknown.txt';
+       export_as_download(filename + '.sc4', 'text/sc4', result);
+    } else if (delivery_mode == 'upload') {
+      sc4.upload(result, get_rx_email(recipient));
     } else {
-      if (filename == null) filename = 'unknown.txt';
-      export_as_download(filename + '.sc4', 'text/sc4', result);
-    }
+      this_should_never_happen("Unknown delivery mode: " + delivery_mode);
+     }
+   }
+  
+  sc4.upload = function() {
+    msg("Upload delivery is not implemented in this version of SC4.");
   }
 
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
+
+  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpg',
+    'image/gif', 'image/png'];
+  var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
+
+  function member(s, l) {
+    for (var i=0; i<l.length; i++) {
+      if (l[i]==s) return true;
+    }
+    return false;
+  }
+
+  function mimetype_category(s) {
+    s = s.toLowerCase();
+    if (s=='text/plain') return 'text';
+    if (member(s, safe_mime_types)) return 'safe';
+    if (member(s, sanitize_mime_types)) return 'sanitize';
+    return 'unknown';
+  }
 
   function process_sc4_file(filename, sc4_type, content) {
     if (sc4_type == 'public_key') return import_key(content);
@@ -2605,26 +2689,31 @@ var sc4 = sc4 || {};
       if (!l) return msg("Decryption failed");
       content = l[0];
       sc4_type = sc4_typeof(content);
-      var sender_key = l[1];
+      var encrypter_pk = unb64(l[1]);
       var sender_email = l[2];
     }
-    var bundle_op = unbundle_op_table[sc4_type];
-    if (bundle_op) {
-      var l = bundle_op(content);
+    var unbundle_op = unbundle_op_table[sc4_type];
+    if (unbundle_op) {
+      var l = unbundle_op(content);
       var filename = l[0];
       var mimetype = l[1];
       content = l[2];
-      var sigstatus = l[3];
+      var sig = l[3];
+      var signer_pk = sig ? unb64(sig[1]) : null;
+      var sigcontent = combine4sig(filename, mimetype, content);
+      var sigstatus = sigcheck(sigcontent, sig);
     } else {
       return msg('Unknown file format: ' + sc4_type);
     }
 
     // Present results
 
-    var msgs = ["Success."];
-    if (decrypt_op) {
-      msgs.push('This message was encrypted by ' +
-		html_escape(sender_email) + '(' + sender_key + ')')
+    var msgs = ["Message was processed successfully."];
+    if (decrypt_op && sender_email) {
+      msgs.push('This message was encrypted by ' + html_escape(sender_email));
+    } else if (decrypt_op) {
+      msgs.push('<span style="color:red">This message was encrypted by an ' +
+		'unknown party (' + b58(encrypter_pk).slice(0,8) + ')</span>');
     } else {
       msgs.push("This message was <span style='color:red'>NOT ENCRYPTED</span>.");
     }
@@ -2632,19 +2721,46 @@ var sc4 = sc4 || {};
     var sss = 'Signature status: <span style="color:' + sigcolor + '">' +
       html_escape(sigstatus) + '</span>';
     msgs.push(sss);
-    msgs.push(filename ? 'File name: ' + html_escape(filename) : '(No file name)');
+
+    // Make sure encryption and signing keys match if both exist
+    var key_mismatch = signer_pk && encrypter_pk &&
+      !nacl.verify(encrypter_pk, nacl.spk2epk(signer_pk));
+    if (key_mismatch) {
+      msgs.push(
+	'<span style="color:red">NOTE: This message was signed using ' +
+	  'a different key than the one used to encrypted it.</span>'
+      );
+    }
+    msgs.push(filename ? 'File name: ' + html_escape(filename) :
+	      '<span style="color:red">No file name</span>');
     msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
+
+    // Make sure the preview data is safe to display
+    var pv_content = content;
+    var pv_mimetype = mimetype;
+    var mtcat = mimetype_category(mimetype);
+    if (mtcat=='sanitize') {
+      pv_content = DOMPurify.sanitize(
+	content, {FORBID_ATTR: ['href', 'xlink:href', 'src', 'action']});
+      pv_mimetype = 'text/plain; charset=utf-8';
+    } else if (mtcat=='text') {
+      pv_content = html_escape(content.slice(0,1000));
+      pv_mimetype = 'text/plain; charset=utf-8';
+    } else if (mtcat!='safe') {
+      pv_content = '[No preview available -- content may be unsafe!]'
+      pv_mimetype = 'text/plain; charset=utf-8';
+    }
+
     var link = make_download_link(filename, mimetype, content);
-    // Purify the preview link if the content it HTML
-    var plink = (mimetype != 'text/html') ? link :
-      make_download_link(filename, mimetype,  DOMPurify.sanitize(content));
-    if (mimetype.slice(0,4) == 'text' && mimetype != 'text/html') {
+
+    if (member(mtcat, ['text','sanitize'])) {
       msgs.push('<div style="border: 1px solid black; padding: 10px"><pre>' +
-		html_escape(content.slice(0,1000)) + '</pre></div>');
+		pv_content + '</pre></div>');
     } else {
-      msgs.push('<iframe height=400px width=800px src=' + plink.href +
+      var pv_link = make_download_link(filename, pv_mimetype, pv_content);
+      msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
 		'></iframe>');
     }
     msgs.push('<br><br>');
@@ -2673,19 +2789,19 @@ var sc4 = sc4 || {};
     for (var i=0; i<l.length; i++) sc4[l[i].name] = l[i];
   }
 
-  sc4.init = init;
-  sc4.show = show;
+  sc4.init = init; // Because MSIE doesn't support function.name
   sc4.reset = hard_reset;
-  sc4.initial_setup = initial_setup;
-  sc4.export_my_key = export_my_key;
   sc4.encsign = process_text_box_data;
-  sc4.write_check = write_check;
   sc4.genlocal = generate_local_sc4;
+  sc4.export_key = export_my_key_string;
+  sc4.email_regex = email_regex;
+  _export([init, show, msg, initial_setup, export_my_key,
+           write_check, sign_pt, process_content,
+           export_as_email, b58, unb58])
 
 })();
 sc4.genlocal_flag = true;
 </script>
-
 <!-- SC4 HTML starts here -->
 
 <script>
@@ -2694,6 +2810,14 @@ $(sc4.init);
 
 <div id=nojs class=toplevel style='display:block'>
 You appear to have Javascript disabled.  Javascript is required for this application.  Please enable it and reload this page.
+</div>
+
+<div id=msie class=toplevel>
+Sorry, SC4 does not currently work with Microsoft Internet Explorer.
+Please use
+<a href=https://www.mozilla.org/en-US/firefox/new/>Firefox</a> instead.
+(SC4 also works with Chrome and Safari, but Firefox is a better choice
+from a security point of view.)
 </div>
 
 <div id=initializing class=toplevel>
@@ -2730,19 +2854,31 @@ Please enter your email address:
 <div id=generate_local_sc4 class=toplevel>
 <h1>Welcome to SC4!</h1>
 You are running this code from a local copy rather than
-from a server.  In order to be secure when running this way you need to
-generate a customized version of SC4 that has your private keys embedded
+from a server.  In order to be secure when running this way, you need to
+generate a customized version of SC4 that has your secret key embedded
 within the code instead of being stored in your browser.
 <br><br>
-To generate a copy of SC4 that you can run from a local file
-<input type=button onClick='sc4.genlocal()' value='click here'>.  Save
-the resulting file and then open it in your browser.  IMPORTANT: this file
-will have your keys embedded within it, so don't share it with anyone!
+
+<span style='color:red'>IMPORTANT!</span> The file you are about to
+generate will have your secret key embedded inside it, so you will
+need to take some precautions to keep it secure:
+
+<ol>
+<li> Don't leave this file in your downloads folder.
+<li> Don't share this file with anyone.
+<li> Don't use Safari to generate this file.
+</ol>
+
+The reason for the third rule is that the generated file will be given
+a randomized file name to make it harder for attackers to find it.
+Safari discards the file name for generated downloads, which will
+undermine this security feature.
+
 <br><br>
-NOTE: It is strongly recommended that you run this in Firefox or Chrome
-and not Safari.  This is because Safari discards the suggested file name
-of locally generated downloads, but the file name needs to be randomized
-in order to better secure the embedded keys.
+To generate a copy of SC4 with an embedded secret key
+that you can run from a local file
+<input type=button onClick='sc4.genlocal()' value='click here'>.
+
 </div>
 
 <div id=generating_local_sc4 class=toplevel>
@@ -2756,25 +2892,24 @@ Generating a local copy of SC4 with embedded keys...
   </div>
   <h1>SC4</h1>
   <h2>Secure Communications For Mere Mortals</h2>
-    Encrypt for:
-    <select id=recipient class=rx_menu>
-    </select> or
-    <input type=button value="Connect with a new user"
-	   onClick='sc4.export_my_key()'>
-    <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
-    <br><br>Drag-and-drop a file, or enter text:<br>
-    <textarea id=text rows=20></textarea>
-    <br>
-    Output to:
-    <input type=radio name=op1 value=email checked>Email
-    <input type=radio name=op1 value=download>Download
-    <span style='float:right'>
-      <input type=checkbox id=encrypt checked>Encrypt
-      <input type=checkbox id=sign>Sign
-      <input type=button value="Submit" onClick='sc4.encsign()'>
-      <input type=button value="Clear" onClick="$('#text').val('')">
-    </span>
-  </div>
+  Encrypt for:
+  <select id=recipient class=rx_menu>
+  </select> or
+  <input type=button value="Connect with a new user"
+	 onClick='sc4.export_my_key()'>
+  <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
+  <br><br>Drag-and-drop a file, or enter text:<br>
+  <textarea id=text rows=20></textarea>
+  <br>
+  Output to:
+  <input type=radio name=op1 value=email checked>Email
+  <input type=radio name=op1 value=download>Download
+  <span style='float:right'>
+    <input type=checkbox id=encrypt checked>Encrypt
+    <input type=checkbox id=sign>Sign
+    <input type=button value="Submit" onClick='sc4.encsign()'>
+    <input type=button value="Clear" onClick="$('#text').val('')">
+  </span>
 </div>
 
 <div id=write_check class=toplevel>

@@ -229,6 +229,7 @@ var sc4 = sc4 || {};
 
   // Get receiver public keys from localStorage and set up global state
   function retrieve_rx_keys() {
+    if (localStorage[pk_key]==undefined) reset_rx_keys();
     rx_keys = unjson(localStorage[pk_key]).map(function(entry) {
       return [entry[0], unb58(entry[1]), unb58(entry[2])]
     });
@@ -363,7 +364,8 @@ var sc4 = sc4 || {};
     var keys = [b64(ekp.publicKey), b64(ekp.secretKey), b64(seed)];
     keys = 'local_keys = json(' + json(keys) + ');';
     s = s.replace('local_keys = null;', keys);
-    var filename = 'sc4_' + b58(nacl.randomBytes(10)) + '.html';
+    var filename = 'SC4_' + b58(nacl.randomBytes(10)) + '.html';
+    s = '<!-- Save this file as "' + filename + '" -->\n' + s;
     export_as_download(filename, 'text/plain', s)
   }
 

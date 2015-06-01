@@ -3,6 +3,8 @@
 
 TARGET=sc4z.html
 
+OFFSET=$(shell grep -n 'SC4 HTML starts here' sc4.html | cut -f1 -d: )
+
 ${TARGET}: jquery.js nacl.js purify.js sc4.js sc4.css sc4.html
 	echo '<meta charset="UTF-8">' >> $(TARGET)
 	echo '<!-- This is a self-contained version of SC4 -->' > $(TARGET)
@@ -14,7 +16,7 @@ ${TARGET}: jquery.js nacl.js purify.js sc4.js sc4.css sc4.html
 	cat jquery.js purify.js nacl.js sc4.js >> ${TARGET}
 	echo 'sc4.genlocal_flag = true;' >> ${TARGET}
 	echo '</script>' >> ${TARGET}
-	tail -n +9 sc4.html >> ${TARGET}
+	tail -n +${OFFSET} sc4.html >> ${TARGET}
 
 clean:
 	rm $(TARGET)

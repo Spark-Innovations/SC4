@@ -60,19 +60,31 @@ Please enter your email address:
 <div id=generate_local_sc4 class=toplevel>
 <h1>Welcome to SC4!</h1>
 You are running this code from a local copy rather than
-from a server.  In order to be secure when running this way you need to
-generate a customized version of SC4 that has your private keys embedded
+from a server.  In order to be secure when running this way, you need to
+generate a customized version of SC4 that has your secret key embedded
 within the code instead of being stored in your browser.
 <br><br>
-To generate a copy of SC4 that you can run from a local file
-<input type=button onClick='sc4.genlocal()' value='click here'>.  Save
-the resulting file and then open it in your browser.  IMPORTANT: this file
-will have your keys embedded within it, so don't share it with anyone!
+
+<span style='color:red'>IMPORTANT!</span> The file you are about to
+generate will have your secret key embedded inside it, so you will
+need to take some precautions to keep it secure:
+
+<ol>
+<li> Don't leave this file in your downloads folder.
+<li> Don't share this file with anyone.
+<li> Don't use Safari to generate this file.
+</ol>
+
+The reason for the third rule is that the generated file will be given
+a randomized file name to make it harder for attackers to find it.
+Safari discards the file name for generated downloads, which will
+undermine this security feature.
+
 <br><br>
-NOTE: It is strongly recommended that you run this in Firefox or Chrome
-and not Safari.  This is because Safari discards the suggested file name
-of locally generated downloads, but the file name needs to be randomized
-in order to better secure the embedded keys.
+To generate a copy of SC4 with an embedded secret key
+that you can run from a local file
+<input type=button onClick='sc4.genlocal()' value='click here'>.
+
 </div>
 
 <div id=generating_local_sc4 class=toplevel>
