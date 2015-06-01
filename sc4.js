@@ -463,8 +463,17 @@ var sc4 = sc4 || {};
     if (len + 84 != bytes.length) return null;
     var nonce = bytes.subarray(12, 36);
     var sender_key = bytes.subarray(36, 68);
-    if ((nonce[0] & 3) != (u8a_cmp(sender_key, my_keys.epk) & 3)) return null;
     var cipherbytes = bytes.subarray(68);
+    if ((nonce[0] & 3) != (u8a_cmp(sender_key, my_keys.epk) & 3)) {
+      // This message was not encrypted for us, maybe was encrypted by us
+      for (var i=0; i<rx_keys.length; i++) {
+	var content = nacl.box.open(cipherbytes, nonce, rx_keys[i][1],
+	  my_keys.esk);
+	if (content) {
+	  return [content, b64(my_keys.epk), "Me for " + rx_keys[i][0]];
+	}
+      }
+    }
     var content = nacl.box.open(cipherbytes, nonce, sender_key, my_keys.esk);
     if (!content) return null;
     if (content.length != len) return null;
