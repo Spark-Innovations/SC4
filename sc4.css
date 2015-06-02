@@ -79,5 +79,7 @@ textarea {
 }
 
 .red { color: red; }
+.green { color: green; }
 .floatright { float: right; }
 .hidden { display: none; }
+.preview { border: 1px solid black; padding: 10px; }

@@ -637,7 +637,7 @@ var sc4 = sc4 || {};
     var signer_email = sig_key_map[sigkey];
     var keyfp = b58(unb64(sigkey)).slice(0,8);
     if (!signer_email) return 'Signed by an unknown party (' + keyfp + ')';
-    return 'Valid signature from ' + signer_email + '(' + keyfp + ')';
+    return 'Valid signature from ' + signer_email + ' (' + keyfp + ')';
   }
 
   var preamble = 'This is a secure message produced by SC4.  ' +
@@ -871,13 +871,13 @@ var sc4 = sc4 || {};
     if (decrypt_op && sender_email) {
       msgs.push('This message was encrypted by ' + html_escape(sender_email));
     } else if (decrypt_op) {
-      msgs.push('<span style="color:red">This message was encrypted by an ' +
+      msgs.push('<span class=red>This message was encrypted by an ' +
 		'unknown party (' + b58(encrypter_pk).slice(0,8) + ')</span>');
     } else {
-      msgs.push("This message was <span style='color:red'>NOT ENCRYPTED</span>.");
+      msgs.push("This message was <span class=red>NOT ENCRYPTED</span>.");
     }
     var sigcolor = sigstatus.slice(0,5)=='Valid' ? 'green' : 'red';
-    var sss = 'Signature status: <span style="color:' + sigcolor + '">' +
+    var sss = 'Signature status: <span class=' + sigcolor + '>' +
       html_escape(sigstatus) + '</span>';
     msgs.push(sss);
 
@@ -886,12 +886,12 @@ var sc4 = sc4 || {};
       !nacl.verify(encrypter_pk, nacl.spk2epk(signer_pk));
     if (key_mismatch) {
       msgs.push(
-	'<span style="color:red">NOTE: This message was signed using ' +
+	'<span class=red>NOTE: This message was signed using ' +
 	  'a different key than the one used to encrypted it.</span>'
       );
     }
     msgs.push(filename ? 'File name: ' + html_escape(filename) :
-	      '<span style="color:red">No file name</span>');
+	      '<span class=red>No file name</span>');
     msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
@@ -915,8 +915,7 @@ var sc4 = sc4 || {};
     var link = make_download_link(filename, mimetype, content);
 
     if (member(mtcat, ['text','sanitize'])) {
-      msgs.push('<div style="border: 1px solid black; padding: 10px"><pre>' +
-		pv_content + '</pre></div>');
+      msgs.push('<div class=preview><pre>' + pv_content + '</pre></div>');
     } else {
       var pv_link = make_download_link(filename, pv_mimetype, pv_content);
       msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
