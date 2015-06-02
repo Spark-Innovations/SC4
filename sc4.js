@@ -944,9 +944,9 @@ var sc4 = sc4 || {};
     show('main');
   }
 
-  function ref(s) {
-    if (/^[a-zA-Z_]+$/.test(s)) return eval(s);
-  }
+  function show_main() { show('main'); }
+
+  function clear_text_box_data() { $('#text').val(''); }
 
   function install_event_handlers() {
     $('#main').on('dragenter', dragEnter);
@@ -955,16 +955,32 @@ var sc4 = sc4 || {};
     $('.dropzone').on('drop', drop);
     $('input[type=button]').each(function(idx, button) {
       var handler = $(button).attr('click');
-      if (handler) $(button).on('click', ref(handler));
+      if (handler) $(button).on('click', sc4[handler]);
     });
   }
 
-  function show_main() { show('main'); }
+  var exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
+    html_escape, bufconcat, concat, int2bytes, bytes2int, baseN, unbaseN,
+    b58, unb58, b32, unb32, hex, unhex, show, msg, hard_reset, genkeys,
+    setup_keys, get_rx_key, get_rx_email, running_from_local_file,
+    retrieve_my_keys, retrieve_rx_keys, store_rx_keys, reset_rx_keys,
+    setup_rx_menu, install_public_key, this_should_never_happen,
+    initial_setup, generate_or_setup_keys, generate_local_sc4_aux,
+    generate_local_sc4, init, stopEvents, dragEnter, dragLeave, drop,
+    handle_file_drop, process_dropped_files, encrypt, decrypt,
+    encrypt_pt, decrypt_pt, signature, sign, verify_signature, sign_pt,
+    verify_signature_pt, combine4sig, bundle, unbundle, bundle_pt,
+    unbundle_pt, sigcheck, sc4_typeof, virtual_click, export_as_email,
+    make_download_link, export_as_download, export_my_key_string,
+    export_my_key, wordify, find_rx_key_for_pk, import_key, process_file,
+    process_text_box_data, process_content, member, mimetype_category,
+    process_sc4_file, write_check, install_event_handlers,
+    show_main, clear_text_box_data];
 
-  function clear_text_box_data() { $('#text').val(''); }
+  for (var i=0; i<exports.length; i++) sc4[exports[i].name]=exports[i];
 
-  sc4.ref = ref;
+  sc4.init = init; // Because IE doesn't support function.name
 
 })();
 
-$(sc4.ref('init'));
+$(sc4.init);
