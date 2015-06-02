@@ -285,7 +285,7 @@ var sc4 = sc4 || {};
       retrieve_rx_keys();
       setup_rx_menu();
     }
-    $('#text').val('');
+    clear_text_box_data();
   }
 
   function this_should_never_happen(msg) {
@@ -386,11 +386,9 @@ var sc4 = sc4 || {};
       document.getElementById("msie").style.display='block';
       return;
     }
+    $('#nojs').hide();
     show('initializing');
-    $('#main').on('dragenter', dragEnter);
-    $('.dropzone').on('dragover', stopEvents);
-    $('.dropzone').on('dragleave', dragLeave);
-    $('.dropzone').on('drop', drop);
+    install_event_handlers();
     generate_or_setup_keys();
   }
 
@@ -928,7 +926,7 @@ var sc4 = sc4 || {};
     link.innerHTML='Download this file';
     msgs.push(link.outerHTML);
     msg(msgs.join('<br>'));
-    $('#text').val('');
+    clear_text_box_data();
   }
 
   function write_check() {
@@ -946,18 +944,27 @@ var sc4 = sc4 || {};
     show('main');
   }
 
-  function _export(l) {
-    for (var i=0; i<l.length; i++) sc4[l[i].name] = l[i];
+  function ref(s) {
+    if (/^[a-zA-Z_]+$/.test(s)) return eval(s);
   }
 
-  sc4.init = init; // Because MSIE doesn't support function.name
-  sc4.reset = hard_reset;
-  sc4.encsign = process_text_box_data;
-  sc4.genlocal = generate_local_sc4;
-  sc4.export_key = export_my_key_string;
-  sc4.email_regex = email_regex;
-  _export([init, show, msg, initial_setup, export_my_key,
-           write_check, sign_pt, process_content,
-           export_as_email, b58, unb58])
+  function install_event_handlers() {
+    $('#main').on('dragenter', dragEnter);
+    $('.dropzone').on('dragover', stopEvents);
+    $('.dropzone').on('dragleave', dragLeave);
+    $('.dropzone').on('drop', drop);
+    $('input[type=button]').each(function(idx, button) {
+      var handler = $(button).attr('click');
+      if (handler) $(button).on('click', ref(handler));
+    });
+  }
+
+  function show_main() { show('main'); }
+
+  function clear_text_box_data() { $('#text').val(''); }
+
+  sc4.ref = ref;
 
 })();
+
+$(sc4.ref('init'));

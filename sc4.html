@@ -1,6 +1,10 @@
 <!doctype html>
 <meta charset="UTF-8">
 
+<meta http-equiv="Content-Security-Policy" content=
+"default-src 'none'; script-src 'self' 'unsafe-eval'; style-src 'self';
+ frame-src 'none';">
+
 <script src=jquery.js></script>
 <script src=nacl-fast.js></script>
 <script src=purify.js></script>
@@ -10,11 +14,7 @@
 
 <!-- SC4 HTML starts here -->
 
-<script>
-$(sc4.init);
-</script>
-
-<div id=nojs class=toplevel style='display:block'>
+<div id=nojs>
 You appear to have Javascript disabled.  Javascript is required for this application.  Please enable it and reload this page.
 </div>
 
@@ -54,7 +54,7 @@ to register your key with us.
 <br><br>
 Please enter your email address:
  <input type=text id=email>
- <input type=button value=Submit onClick='sc4.initial_setup()'>
+ <input type=button value=Submit click=initial_setup>
 </div>
 
 <div id=generate_local_sc4 class=toplevel>
@@ -65,7 +65,7 @@ generate a customized version of SC4 that has your secret key embedded
 within the code instead of being stored in your browser.
 <br><br>
 
-<span style='color:red'>IMPORTANT!</span> The file you are about to
+<span class=red>IMPORTANT!</span> The file you are about to
 generate will have your secret key embedded inside it, so you will
 need to take some precautions to keep it secure:
 
@@ -83,7 +83,7 @@ undermine this security feature.
 <br><br>
 To generate a copy of SC4 with an embedded secret key
 that you can run from a local file
-<input type=button onClick='sc4.genlocal()' value='click here'>.
+<input type=button click=generate_local_sc4 value='click here'>.
 
 </div>
 
@@ -101,20 +101,19 @@ Generating a local copy of SC4 with embedded keys...
   Encrypt for:
   <select id=recipient class=rx_menu>
   </select> or
-  <input type=button value="Connect with a new user"
-	 onClick='sc4.export_my_key()'>
-  <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
+  <input type=button value="Connect with a new user" click=export_my_key>
+  <a href=https://sc4.us/help.html target=help class=floatright>Help</a>
   <br><br>Drag-and-drop a file, or enter text:<br>
   <textarea id=text rows=20></textarea>
   <br>
   Output to:
   <input type=radio name=op1 value=email checked>Email
   <input type=radio name=op1 value=download>Download
-  <span style='float:right'>
+  <span class=floatright>
     <input type=checkbox id=encrypt checked>Encrypt
     <input type=checkbox id=sign>Sign
-    <input type=button value="Submit" onClick='sc4.encsign()'>
-    <input type=button value="Clear" onClick="$('#text').val('')">
+    <input type=button value="Submit" click=process_text_box_data>
+    <input type=button value="Clear" click=clear_text_box_data>
   </span>
 </div>
 
@@ -125,11 +124,11 @@ Amount: <input id=check_amount type=text><br>
 Memo: <br>
 <textarea id=check_memo rows=5 cols=80></textarea>
 <br>
-<input type=button value="Send" onClick='sc4.write_check()'>
-<input type=button value='Cancel' onClick='sc4.show("main")'>
+<input type=button value="Send" click=write_check>
+<input type=button value='Cancel' click=show_main>
 </div>
 
-<div id=invitation style='display:none'>
+<div id=invitation class=hidden>
 Hello,
 
 I would like to send you a secure message using SC4.  Please go to
@@ -140,6 +139,6 @@ and paste the following text so that we can connect:
 
 <div id=msg class=toplevel>
   <div id=msgcontent></div>
-  <input type=button value='Dismiss' onClick='sc4.show("main")' style='float:right'>
+  <input type=button value='Dismiss' class=floatright click=show_main>
   <br><br><br>
 </div>
