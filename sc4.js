@@ -911,18 +911,13 @@ var sc4 = sc4 || {};
       pv_mimetype = 'text/plain; charset=utf-8';
     }
 
-    var link = make_download_link(filename, mimetype, content);
+    var pv_link = make_download_link(filename, pv_mimetype, pv_content);
+    msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
+	      '></iframe><br><br>');
 
-    if (member(mtcat, ['text','sanitize'])) {
-      msgs.push('<div class=preview><pre>' + pv_content + '</pre></div>');
-    } else {
-      var pv_link = make_download_link(filename, pv_mimetype, pv_content);
-      msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
-		'></iframe>');
-    }
-    msgs.push('<br><br>');
-    link.innerHTML='Download this file';
-    msgs.push(link.outerHTML);
+    var dl_link = make_download_link(filename, mimetype, content);
+    dl_link.innerHTML='Download this file';
+    msgs.push(dl_link.outerHTML);
     msg(msgs.join('<br>'));
     clear_text_box_data();
   }
