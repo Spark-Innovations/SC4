@@ -815,7 +815,7 @@ var sc4 = sc4 || {};
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
-  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpg',
+  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpeg',
     'image/gif', 'image/png'];
   var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
 
