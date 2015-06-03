@@ -903,7 +903,6 @@ var sc4 = sc4 || {};
     if (mtcat=='sanitize') {
       pv_content = DOMPurify.sanitize(
 	content, {FORBID_ATTR: ['href', 'xlink:href', 'src', 'action']});
-      pv_mimetype = 'text/plain; charset=utf-8';
     } else if (mtcat=='text') {
       pv_content = html_escape(content.slice(0,1000));
       pv_mimetype = 'text/plain; charset=utf-8';
