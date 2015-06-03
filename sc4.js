@@ -551,10 +551,10 @@ var sc4 = sc4 || {};
   }
   
   function combine4sig(filename, mimetype, content) {
-    var sigfilename = (filename==null) ? '-' : filename;
-    var s = hex(hash(content)).toLowerCase() + '  ' +
-      sigfilename + '\n' + mimetype + '\n';
-    return s;
+    filename = (filename==null) ? '-' : filename.replace(/\n/g, '');
+    mimetype = mimetype.replace(/\n/g, '');
+    var h = hex(hash(content)).toLowerCase();
+    return h + '  ' + filename + '\n' + mimetype + '\n';
   }
 
   function bundle(filename, mimetype, content, sigflag) {
