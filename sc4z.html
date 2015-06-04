@@ -80,6 +80,12 @@ textarea {
 .active {
   display: block;
 }
+
+.red { color: red; }
+.green { color: green; }
+.floatright { float: right; }
+.hidden { display: none; }
+.preview { border: 1px solid black; padding: 10px; }
 </style>
 <script>
 /*! jQuery v2.0.3 | (c) 2005, 2013 jQuery Foundation, Inc. | jquery.org/license
@@ -2124,7 +2130,7 @@ var sc4 = sc4 || {};
       retrieve_rx_keys();
       setup_rx_menu();
     }
-    $('#text').val('');
+    clear_text_box_data();
   }
 
   function this_should_never_happen(msg) {
@@ -2225,11 +2231,9 @@ var sc4 = sc4 || {};
       document.getElementById("msie").style.display='block';
       return;
     }
+    $('#nojs').hide();
     show('initializing');
-    $('#main').on('dragenter', dragEnter);
-    $('.dropzone').on('dragover', stopEvents);
-    $('.dropzone').on('dragleave', dragLeave);
-    $('.dropzone').on('drop', drop);
+    install_event_handlers();
     generate_or_setup_keys();
   }
 
@@ -2392,10 +2396,10 @@ var sc4 = sc4 || {};
   }
   
   function combine4sig(filename, mimetype, content) {
-    var sigfilename = (filename==null) ? '-' : filename;
-    var s = hex(hash(content)).toLowerCase() + '  ' +
-      sigfilename + '\n' + mimetype + '\n';
-    return s;
+    filename = (filename==null) ? '-' : filename.replace(/\n/g, '');
+    mimetype = mimetype.replace(/\n/g, '');
+    var h = hex(hash(content)).toLowerCase();
+    return h + '  ' + filename + '\n' + mimetype + '\n';
   }
 
   function bundle(filename, mimetype, content, sigflag) {
@@ -2478,7 +2482,7 @@ var sc4 = sc4 || {};
     var signer_email = sig_key_map[sigkey];
     var keyfp = b58(unb64(sigkey)).slice(0,8);
     if (!signer_email) return 'Signed by an unknown party (' + keyfp + ')';
-    return 'Valid signature from ' + signer_email + '(' + keyfp + ')';
+    return 'Valid signature from ' + signer_email + ' (' + keyfp + ')';
   }
 
   var preamble = 'This is a secure message produced by SC4.  ' +
@@ -2656,7 +2660,7 @@ var sc4 = sc4 || {};
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
-  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpg',
+  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpeg',
     'image/gif', 'image/png'];
   var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
 
@@ -2712,13 +2716,13 @@ var sc4 = sc4 || {};
     if (decrypt_op && sender_email) {
       msgs.push('This message was encrypted by ' + html_escape(sender_email));
     } else if (decrypt_op) {
-      msgs.push('<span style="color:red">This message was encrypted by an ' +
+      msgs.push('<span class=red>This message was encrypted by an ' +
 		'unknown party (' + b58(encrypter_pk).slice(0,8) + ')</span>');
     } else {
-      msgs.push("This message was <span style='color:red'>NOT ENCRYPTED</span>.");
+      msgs.push("This message was <span class=red>NOT ENCRYPTED</span>.");
     }
     var sigcolor = sigstatus.slice(0,5)=='Valid' ? 'green' : 'red';
-    var sss = 'Signature status: <span style="color:' + sigcolor + '">' +
+    var sss = 'Signature status: <span class=' + sigcolor + '>' +
       html_escape(sigstatus) + '</span>';
     msgs.push(sss);
 
@@ -2727,12 +2731,12 @@ var sc4 = sc4 || {};
       !nacl.verify(encrypter_pk, nacl.spk2epk(signer_pk));
     if (key_mismatch) {
       msgs.push(
-	'<span style="color:red">NOTE: This message was signed using ' +
+	'<span class=red>NOTE: This message was signed using ' +
 	  'a different key than the one used to encrypted it.</span>'
       );
     }
     msgs.push(filename ? 'File name: ' + html_escape(filename) :
-	      '<span style="color:red">No file name</span>');
+	      '<span class=red>No file name</span>');
     msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
     msgs.push('Preview:<br><br>');
@@ -2744,7 +2748,6 @@ var sc4 = sc4 || {};
     if (mtcat=='sanitize') {
       pv_content = DOMPurify.sanitize(
 	content, {FORBID_ATTR: ['href', 'xlink:href', 'src', 'action']});
-      pv_mimetype = 'text/plain; charset=utf-8';
     } else if (mtcat=='text') {
       pv_content = html_escape(content.slice(0,1000));
       pv_mimetype = 'text/plain; charset=utf-8';
@@ -2753,21 +2756,15 @@ var sc4 = sc4 || {};
       pv_mimetype = 'text/plain; charset=utf-8';
     }
 
-    var link = make_download_link(filename, mimetype, content);
+    var pv_link = make_download_link(filename, pv_mimetype, pv_content);
+    msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
+	      '></iframe><br><br>');
 
-    if (member(mtcat, ['text','sanitize'])) {
-      msgs.push('<div style="border: 1px solid black; padding: 10px"><pre>' +
-		pv_content + '</pre></div>');
-    } else {
-      var pv_link = make_download_link(filename, pv_mimetype, pv_content);
-      msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
-		'></iframe>');
-    }
-    msgs.push('<br><br>');
-    link.innerHTML='Download this file';
-    msgs.push(link.outerHTML);
+    var dl_link = make_download_link(filename, mimetype, content);
+    dl_link.innerHTML='Download this file';
+    msgs.push(dl_link.outerHTML);
     msg(msgs.join('<br>'));
-    $('#text').val('');
+    clear_text_box_data();
   }
 
   function write_check() {
@@ -2785,30 +2782,51 @@ var sc4 = sc4 || {};
     show('main');
   }
 
-  function _export(l) {
-    for (var i=0; i<l.length; i++) sc4[l[i].name] = l[i];
+  function show_main() { show('main'); }
+
+  function clear_text_box_data() { $('#text').val(''); }
+
+  function install_event_handlers() {
+    $('#main').on('dragenter', dragEnter);
+    $('.dropzone').on('dragover', stopEvents);
+    $('.dropzone').on('dragleave', dragLeave);
+    $('.dropzone').on('drop', drop);
+    $('input[type=button]').each(function(idx, button) {
+      var handler = $(button).attr('click');
+      if (handler) $(button).on('click', sc4[handler]);
+    });
   }
 
-  sc4.init = init; // Because MSIE doesn't support function.name
-  sc4.reset = hard_reset;
-  sc4.encsign = process_text_box_data;
-  sc4.genlocal = generate_local_sc4;
-  sc4.export_key = export_my_key_string;
-  sc4.email_regex = email_regex;
-  _export([init, show, msg, initial_setup, export_my_key,
-           write_check, sign_pt, process_content,
-           export_as_email, b58, unb58])
+  var exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
+    html_escape, bufconcat, concat, int2bytes, bytes2int, baseN, unbaseN,
+    b58, unb58, b32, unb32, hex, unhex, show, msg, hard_reset, genkeys,
+    setup_keys, get_rx_key, get_rx_email, running_from_local_file,
+    retrieve_my_keys, retrieve_rx_keys, store_rx_keys, reset_rx_keys,
+    setup_rx_menu, install_public_key, this_should_never_happen,
+    initial_setup, generate_or_setup_keys, generate_local_sc4_aux,
+    generate_local_sc4, init, stopEvents, dragEnter, dragLeave, drop,
+    handle_file_drop, process_dropped_files, encrypt, decrypt,
+    encrypt_pt, decrypt_pt, signature, sign, verify_signature, sign_pt,
+    verify_signature_pt, combine4sig, bundle, unbundle, bundle_pt,
+    unbundle_pt, sigcheck, sc4_typeof, virtual_click, export_as_email,
+    make_download_link, export_as_download, export_my_key_string,
+    export_my_key, wordify, find_rx_key_for_pk, import_key, process_file,
+    process_text_box_data, process_content, member, mimetype_category,
+    process_sc4_file, write_check, install_event_handlers,
+    show_main, clear_text_box_data];
+
+  for (var i=0; i<exports.length; i++) sc4[exports[i].name]=exports[i];
+
+  sc4.init = init; // Because IE doesn't support function.name
 
 })();
+
+$(sc4.init);
 sc4.genlocal_flag = true;
 </script>
 <!-- SC4 HTML starts here -->
 
-<script>
-$(sc4.init);
-</script>
-
-<div id=nojs class=toplevel style='display:block'>
+<div id=nojs>
 You appear to have Javascript disabled.  Javascript is required for this application.  Please enable it and reload this page.
 </div>
 
@@ -2848,7 +2866,7 @@ to register your key with us.
 <br><br>
 Please enter your email address:
  <input type=text id=email>
- <input type=button value=Submit onClick='sc4.initial_setup()'>
+ <input type=button value=Submit click=initial_setup>
 </div>
 
 <div id=generate_local_sc4 class=toplevel>
@@ -2859,7 +2877,7 @@ generate a customized version of SC4 that has your secret key embedded
 within the code instead of being stored in your browser.
 <br><br>
 
-<span style='color:red'>IMPORTANT!</span> The file you are about to
+<span class=red>IMPORTANT!</span> The file you are about to
 generate will have your secret key embedded inside it, so you will
 need to take some precautions to keep it secure:
 
@@ -2877,7 +2895,7 @@ undermine this security feature.
 <br><br>
 To generate a copy of SC4 with an embedded secret key
 that you can run from a local file
-<input type=button onClick='sc4.genlocal()' value='click here'>.
+<input type=button click=generate_local_sc4 value='click here'>.
 
 </div>
 
@@ -2895,20 +2913,19 @@ Generating a local copy of SC4 with embedded keys...
   Encrypt for:
   <select id=recipient class=rx_menu>
   </select> or
-  <input type=button value="Connect with a new user"
-	 onClick='sc4.export_my_key()'>
-  <a href=https://sc4.us/help.html target=help style='float:right'>Help</a>
+  <input type=button value="Connect with a new user" click=export_my_key>
+  <a href=https://sc4.us/help.html target=help class=floatright>Help</a>
   <br><br>Drag-and-drop a file, or enter text:<br>
   <textarea id=text rows=20></textarea>
   <br>
   Output to:
   <input type=radio name=op1 value=email checked>Email
   <input type=radio name=op1 value=download>Download
-  <span style='float:right'>
+  <span class=floatright>
     <input type=checkbox id=encrypt checked>Encrypt
     <input type=checkbox id=sign>Sign
-    <input type=button value="Submit" onClick='sc4.encsign()'>
-    <input type=button value="Clear" onClick="$('#text').val('')">
+    <input type=button value="Submit" click=process_text_box_data>
+    <input type=button value="Clear" click=clear_text_box_data>
   </span>
 </div>
 
@@ -2919,11 +2936,11 @@ Amount: <input id=check_amount type=text><br>
 Memo: <br>
 <textarea id=check_memo rows=5 cols=80></textarea>
 <br>
-<input type=button value="Send" onClick='sc4.write_check()'>
-<input type=button value='Cancel' onClick='sc4.show("main")'>
+<input type=button value="Send" click=write_check>
+<input type=button value='Cancel' click=show_main>
 </div>
 
-<div id=invitation style='display:none'>
+<div id=invitation class=hidden>
 Hello,
 
 I would like to send you a secure message using SC4.  Please go to
@@ -2934,6 +2951,6 @@ and paste the following text so that we can connect:
 
 <div id=msg class=toplevel>
   <div id=msgcontent></div>
-  <input type=button value='Dismiss' onClick='sc4.show("main")' style='float:right'>
+  <input type=button value='Dismiss' class=floatright click=show_main>
   <br><br><br>
 </div>
