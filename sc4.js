@@ -815,10 +815,11 @@ var sc4 = sc4 || {};
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
-  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpeg',
-    'image/gif', 'image/png'];
+  var text_mime_types = ['text', 'text/plain', 'text/unknown'];
   var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
-
+  var safe_mime_types = ['image/jpeg', 'image/gif', 'image/png'];
+  var pdf_mime_types = [''application/pdf'];
+  
   function member(s, l) {
     for (var i=0; i<l.length; i++) {
       if (l[i]==s) return true;
@@ -828,9 +829,10 @@ var sc4 = sc4 || {};
 
   function mimetype_category(s) {
     s = s.toLowerCase();
-    if (s=='text/plain') return 'text';
+    if (member(s, text_mime_types)) return 'text';
     if (member(s, safe_mime_types)) return 'safe';
     if (member(s, sanitize_mime_types)) return 'sanitize';
+    if (member(s, pdf_mime_types)) return 'pdf';
     return 'unknown';
   }
 
@@ -985,5 +987,3 @@ var sc4 = sc4 || {};
   sc4.init = init; // Because IE doesn't support function.name
 
 })();
-
-$(sc4.init);
