@@ -987,3 +987,5 @@ var sc4 = sc4 || {};
   sc4.init = init; // Because IE doesn't support function.name
 
 })();
+
+$(sc4.init);
