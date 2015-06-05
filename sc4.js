@@ -818,7 +818,7 @@ var sc4 = sc4 || {};
   var text_mime_types = ['text', 'text/plain', 'text/unknown'];
   var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
   var safe_mime_types = ['image/jpeg', 'image/gif', 'image/png'];
-  var pdf_mime_types = [''application/pdf'];
+  var pdf_mime_types = ['application/pdf'];
   
   function member(s, l) {
     for (var i=0; i<l.length; i++) {
