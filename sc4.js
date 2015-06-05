@@ -938,8 +938,10 @@ var sc4 = sc4 || {};
   }
 
   function show_main() { show('main'); }
-
   function clear_text_box_data() { $('#text').val(''); }
+  function my_spk() { return my_keys.spk; }
+  function recipient_keys() { return rx_keys; }
+  function valid_email(s) { return email_regex.test(s); }
 
   function install_event_handlers() {
     $('#main').on('dragenter', dragEnter);
@@ -948,8 +950,15 @@ var sc4 = sc4 || {};
     $('.dropzone').on('drop', drop);
     $('input[type=button]').each(function(idx, button) {
       var handler = $(button).attr('click');
-      if (handler) $(button).on('click', sc4[handler]);
+      if (!handler) console.log("No event handler for " + button.value);
+      var f = sc4[handler];
+      if (f) $(button).on('click', f);
+      else console.log("Unknown handler: " + handler);
     });
+  }
+
+  function exportify(exports) {
+    for (var i=0; i<exports.length; i++) sc4[exports[i].name]=exports[i];
   }
 
   var exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
@@ -967,10 +976,11 @@ var sc4 = sc4 || {};
     make_download_link, export_as_download, export_my_key_string,
     export_my_key, wordify, find_rx_key_for_pk, import_key, process_file,
     process_text_box_data, process_content, member, mimetype_category,
-    process_sc4_file, write_check, install_event_handlers,
-    show_main, clear_text_box_data];
+    process_sc4_file, write_check, install_event_handlers, my_spk,
+    recipient_keys, valid_email, show_main, clear_text_box_data,
+    exportify];
 
-  for (var i=0; i<exports.length; i++) sc4[exports[i].name]=exports[i];
+  exportify(exports);
 
   sc4.init = init; // Because IE doesn't support function.name
 
