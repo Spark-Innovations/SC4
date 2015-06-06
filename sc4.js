@@ -924,21 +924,6 @@ var sc4 = sc4 || {};
     clear_text_box_data();
   }
 
-  function write_check() {
-    var payto = $("#pay_to").val();
-    var amount = $("#check_amount").val();
-    var memo = $("#check_memo").val();
-    var payto_key = get_rx_key(payto);
-    var s = 'X-sc4-content-type: echeck\n' +
-      'X-sc4-pay-to-the-order-of: ' + payto + '\n' +
-      'X-sc4-pto-public-key: ' + b64(payto_key) + '\n' +
-      'X-sc4-amount: ' + amount + '\n' +
-      'X-sc4-timestamp: ' + new Date().toUTCString() + '\n\n' +
-      memo;
-    export_as_email(payto, "Electronic check", sign_pt(to_bytes(s))+s);
-    show('main');
-  }
-
   function show_main() { show('main'); }
   function clear_text_box_data() { $('#text').val(''); }
   function my_spk() { return my_keys.spk; }
@@ -978,7 +963,7 @@ var sc4 = sc4 || {};
     make_download_link, export_as_download, export_my_key_string,
     export_my_key, wordify, find_rx_key_for_pk, import_key, process_file,
     process_text_box_data, process_content, member, mimetype_category,
-    process_sc4_file, write_check, install_event_handlers, my_spk,
+    process_sc4_file, install_event_handlers, my_spk,
     recipient_keys, valid_email, show_main, clear_text_box_data,
     exportify];
 
