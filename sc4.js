@@ -935,7 +935,7 @@ var sc4 = sc4 || {};
     $('.dropzone').on('dragover', stopEvents);
     $('.dropzone').on('dragleave', dragLeave);
     $('.dropzone').on('drop', drop);
-    $('input[type=button]').each(function(idx, button) {
+    $('input[type=button], a.button').each(function(idx, button) {
       var handler = $(button).attr('click');
       if (!handler) console.log("No event handler for " + button.value);
       var f = sc4[handler];
@@ -944,11 +944,7 @@ var sc4 = sc4 || {};
     });
   }
 
-  function exportify(exports) {
-    for (var i=0; i<exports.length; i++) sc4[exports[i].name]=exports[i];
-  }
-
-  var exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
+  sc4.exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
     html_escape, bufconcat, concat, int2bytes, bytes2int, baseN, unbaseN,
     b58, unb58, b32, unb32, hex, unhex, show, msg, hard_reset, genkeys,
     setup_keys, get_rx_key, get_rx_email, running_from_local_file,
@@ -967,7 +963,11 @@ var sc4 = sc4 || {};
     recipient_keys, valid_email, show_main, clear_text_box_data,
     exportify];
 
-  exportify(exports);
+  function exportify(exports, target) {  // Because EXPORT is a reserved word
+    for (var i=0; i<exports.length; i++) target[exports[i].name]=exports[i];
+  }
+
+  exportify(sc4.exports, sc4);
 
   sc4.init = init; // Because IE doesn't support function.name
 
