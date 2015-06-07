@@ -2660,10 +2660,11 @@ var sc4 = sc4 || {};
   var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
-  var safe_mime_types = ['text/plain', 'application/pdf', 'image/jpeg',
-    'image/gif', 'image/png'];
+  var text_mime_types = ['text', 'text/plain', 'text/unknown'];
   var sanitize_mime_types = ['text/html', 'application/xhtml+xml'];
-
+  var safe_mime_types = ['image/jpeg', 'image/gif', 'image/png'];
+  var pdf_mime_types = ['application/pdf'];
+  
   function member(s, l) {
     for (var i=0; i<l.length; i++) {
       if (l[i]==s) return true;
@@ -2673,9 +2674,10 @@ var sc4 = sc4 || {};
 
   function mimetype_category(s) {
     s = s.toLowerCase();
-    if (s=='text/plain') return 'text';
+    if (member(s, text_mime_types)) return 'text';
     if (member(s, safe_mime_types)) return 'safe';
     if (member(s, sanitize_mime_types)) return 'sanitize';
+    if (member(s, pdf_mime_types)) return 'pdf';
     return 'unknown';
   }
 
@@ -2767,37 +2769,27 @@ var sc4 = sc4 || {};
     clear_text_box_data();
   }
 
-  function write_check() {
-    var payto = $("#pay_to").val();
-    var amount = $("#check_amount").val();
-    var memo = $("#check_memo").val();
-    var payto_key = get_rx_key(payto);
-    var s = 'X-sc4-content-type: echeck\n' +
-      'X-sc4-pay-to-the-order-of: ' + payto + '\n' +
-      'X-sc4-pto-public-key: ' + b64(payto_key) + '\n' +
-      'X-sc4-amount: ' + amount + '\n' +
-      'X-sc4-timestamp: ' + new Date().toUTCString() + '\n\n' +
-      memo;
-    export_as_email(payto, "Electronic check", sign_pt(to_bytes(s))+s);
-    show('main');
-  }
-
   function show_main() { show('main'); }
-
   function clear_text_box_data() { $('#text').val(''); }
+  function my_spk() { return my_keys.spk; }
+  function recipient_keys() { return rx_keys; }
+  function valid_email(s) { return email_regex.test(s); }
 
   function install_event_handlers() {
     $('#main').on('dragenter', dragEnter);
     $('.dropzone').on('dragover', stopEvents);
     $('.dropzone').on('dragleave', dragLeave);
     $('.dropzone').on('drop', drop);
-    $('input[type=button]').each(function(idx, button) {
+    $('input[type=button], a.button').each(function(idx, button) {
       var handler = $(button).attr('click');
-      if (handler) $(button).on('click', sc4[handler]);
+      if (!handler) console.log("No event handler for " + button.value);
+      var f = sc4[handler];
+      if (f) $(button).on('click', f);
+      else console.log("Unknown handler: " + handler);
     });
   }
 
-  var exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
+  sc4.exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
     html_escape, bufconcat, concat, int2bytes, bytes2int, baseN, unbaseN,
     b58, unb58, b32, unb32, hex, unhex, show, msg, hard_reset, genkeys,
     setup_keys, get_rx_key, get_rx_email, running_from_local_file,
@@ -2812,10 +2804,15 @@ var sc4 = sc4 || {};
     make_download_link, export_as_download, export_my_key_string,
     export_my_key, wordify, find_rx_key_for_pk, import_key, process_file,
     process_text_box_data, process_content, member, mimetype_category,
-    process_sc4_file, write_check, install_event_handlers,
-    show_main, clear_text_box_data];
+    process_sc4_file, install_event_handlers, my_spk,
+    recipient_keys, valid_email, show_main, clear_text_box_data,
+    exportify];
 
-  for (var i=0; i<exports.length; i++) sc4[exports[i].name]=exports[i];
+  function exportify(exports, target) {  // Because EXPORT is a reserved word
+    for (var i=0; i<exports.length; i++) target[exports[i].name]=exports[i];
+  }
+
+  exportify(sc4.exports, sc4);
 
   sc4.init = init; // Because IE doesn't support function.name
 
@@ -2927,17 +2924,6 @@ Generating a local copy of SC4 with embedded keys...
     <input type=button value="Submit" click=process_text_box_data>
     <input type=button value="Clear" click=clear_text_box_data>
   </span>
-</div>
-
-<div id=write_check class=toplevel>
-<h1>Write a check</h1>
-Pay to the order of: <select id=pay_to class=rx_menu></select><br>
-Amount: <input id=check_amount type=text><br>
-Memo: <br>
-<textarea id=check_memo rows=5 cols=80></textarea>
-<br>
-<input type=button value="Send" click=write_check>
-<input type=button value='Cancel' click=show_main>
 </div>
 
 <div id=invitation class=hidden>
