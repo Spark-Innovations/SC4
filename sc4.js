@@ -930,6 +930,8 @@ var sc4 = sc4 || {};
   function recipient_keys() { return rx_keys; }
   function valid_email(s) { return email_regex.test(s); }
 
+  sc4.key_regex = key_regex;
+
   function install_event_handlers() {
     $('#main').on('dragenter', dragEnter);
     $('.dropzone').on('dragover', stopEvents);
@@ -937,10 +939,11 @@ var sc4 = sc4 || {};
     $('.dropzone').on('drop', drop);
     $('input[type=button], a.button').each(function(idx, button) {
       var handler = $(button).attr('click');
-      if (!handler) console.log("No event handler for " + button.value);
-      var f = sc4[handler];
-      if (f) $(button).on('click', f);
-      else console.log("Unknown handler: " + handler);
+      if (handler) {
+	var f = sc4[handler];
+	if (f) $(button).on('click', f);
+	else console.log("Unknown handler: " + handler);
+      }
     });
   }
 
@@ -963,7 +966,7 @@ var sc4 = sc4 || {};
     recipient_keys, valid_email, show_main, clear_text_box_data,
     exportify];
 
-  function exportify(exports, target) {  // Because EXPORT is a reserved word
+  function exportify(exports, target) {
     for (var i=0; i<exports.length; i++) target[exports[i].name]=exports[i];
   }
 
