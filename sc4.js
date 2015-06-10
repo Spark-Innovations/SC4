@@ -919,7 +919,7 @@ var sc4 = sc4 || {};
 	  '  (<a href=https://sc4.us/unsafe_content_info.html target=help>' +
 	      'More info</a>)<br>');
 
-      msgs.push('<input type=button click=show_unsafe_preview value="I\'ll take my changes, show me a preview anyway">');
+      msgs.push('<input type=button click=show_unsafe_preview value="I\'ll take my chances, show me a preview anyway">');
       msgs.push("<div id=preview></div>");
       sc4.pv_link = pv_link;
     } else if (member(mtcat, ['unknown'])) {
