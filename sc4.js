@@ -692,6 +692,7 @@ var sc4 = sc4 || {};
     a.href = href;
     a.target = filename;
     a.download = filename;
+    $(a).addClass('button');
     return a;
   }
 
@@ -896,7 +897,6 @@ var sc4 = sc4 || {};
 	      '<span class=red>No file name</span>');
     msgs.push('File type: ' + html_escape(mimetype));
     msgs.push('Size: ' + content.length);
-    msgs.push('Preview:<br><br>');
 
     // Make sure the preview data is safe to display
     var pv_content = content;
@@ -906,22 +906,42 @@ var sc4 = sc4 || {};
       pv_content = DOMPurify.sanitize(
 	content, {FORBID_ATTR: ['href', 'xlink:href', 'src', 'action']});
     } else if (mtcat=='text') {
-      pv_content = html_escape(content.slice(0,1000));
-      pv_mimetype = 'text/plain; charset=utf-8';
-    } else if (mtcat!='safe') {
-      pv_content = '[No preview available -- content may be unsafe!]'
+      if (pv_content.length>2500) {
+	pv_content = content.slice(0,2000) + "\n\n[MORE...]";
+      }
       pv_mimetype = 'text/plain; charset=utf-8';
     }
-
     var pv_link = make_download_link(filename, pv_mimetype, pv_content);
-    msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
-	      '></iframe><br><br>');
+
+    if (member(mtcat, ['pdf'])) {
+      msgs.push(
+	'Inline preview not available, content may be unsafe.' +
+	  '  (<a href=https://sc4.us/unsafe_content_info.html target=help>' +
+	      'More info</a>)<br>');
+
+      msgs.push('<input type=button click=show_unsafe_preview value="I\'ll take my changes, show me a preview anyway">');
+      msgs.push("<div id=preview></div>");
+      sc4.pv_link = pv_link;
+    } else if (member(mtcat, ['unknown'])) {
+      msgs.push('<span class=red>Inline preview not available because this file is not of a known type.</span><br><br>');
+    } else {
+      var pv_link = make_download_link(filename, pv_mimetype, pv_content);
+      msgs.push('Preview:<br><br>');
+      msgs.push('<iframe height=400px width=800px src=' + pv_link.href +
+		'></iframe><br><br>');
+    }
 
     var dl_link = make_download_link(filename, mimetype, content);
     dl_link.innerHTML='Download this file';
     msgs.push(dl_link.outerHTML);
     msg(msgs.join('<br>'));
     clear_text_box_data();
+    install_button_event_handlers();
+  }
+
+  function show_unsafe_preview() {
+    $('#preview').html('<iframe height=400px width=800px src=' +
+		       sc4.pv_link.href + '></iframe>');
   }
 
   function show_main() { show('main'); }
@@ -937,6 +957,11 @@ var sc4 = sc4 || {};
     $('.dropzone').on('dragover', stopEvents);
     $('.dropzone').on('dragleave', dragLeave);
     $('.dropzone').on('drop', drop);
+    install_button_event_handlers();
+  }
+
+  function install_button_event_handlers() {
+    $('input[type=button], a.button').unbind();
     $('input[type=button], a.button').each(function(idx, button) {
       var handler = $(button).attr('click');
       if (handler) {
@@ -947,7 +972,8 @@ var sc4 = sc4 || {};
     });
   }
 
-  sc4.exports = [unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
+  sc4.exports = [
+    unb64, type_of, u8a_cmp, hash, to_bytes, split_into_lines,
     html_escape, bufconcat, concat, int2bytes, bytes2int, baseN, unbaseN,
     b58, unb58, b32, unb32, hex, unhex, show, msg, hard_reset, genkeys,
     setup_keys, get_rx_key, get_rx_email, running_from_local_file,
@@ -964,7 +990,7 @@ var sc4 = sc4 || {};
     process_text_box_data, process_content, member, mimetype_category,
     process_sc4_file, install_event_handlers, my_spk,
     recipient_keys, valid_email, show_main, clear_text_box_data,
-    exportify];
+    show_unsafe_preview, exportify];
 
   function exportify(exports, target) {
     for (var i=0; i<exports.length; i++) target[exports[i].name]=exports[i];

@@ -25,7 +25,7 @@ h2 {
   border-radius: 6px;
 }
 
-a, input[type=button] {
+a.button, input[type=button] {
   text-decoration: none;
   color: #606060;
   border: 1px solid #404040;
