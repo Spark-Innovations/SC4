@@ -1,3 +1,7 @@
+### NEWS FLASH!
+
+SC4 has completed an [independent sucurity audit](audit-report.pdf).
+
 ### SC4 - Secure Communications for Mere Mortals
 
 SC4 is a web application that provides secure encrypted communications
@@ -21,12 +25,6 @@ and a trustworthy code base to convert that entropy into random primes.
 Elliptic curve keys do not require prime numbers.  They can use essentially
 any random number as a key, so all that is required to generate a key is a
 trustworthy source of entropy.  This elimintes an entire attack surface.
-
-*** IMPORTANT NOTE ***
-
-This is a BETA release of SC4.  We are in the process of going through an
-independent security audit, but this has not yet been completed.  Until it
-has, SC4 should not be used for mission-critical applications.
 
 ### LICENSE
 
