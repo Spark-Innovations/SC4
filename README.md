@@ -1,6 +1,12 @@
 ### NEWS FLASH!
 
-SC4 has completed an [independent sucurity audit](audit-report.pdf).
+SC4 has completed an [independent sucurity audit](audit-report.pdf)
+conducted by [Cure53](https://cure53.de).  The money quote:
+
+"Our verdict is that SC4 has developed from a proof-of-concept to an
+edgy and unconventional yet reliable crypto tool. If certain
+limitations and constraints are respected by its users, SC4 indeed
+fills a formerly unpopulated gap in the world of browser crypto."
 
 ### SC4 - Secure Communications for Mere Mortals
 
