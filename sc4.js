@@ -545,16 +545,16 @@ var sc4 = sc4 || {};
       keys.push(nacl.box(key, zeroNonce, rx_pk_list[i], my_keys.esk));
     }
     return bufconcat([multi_enc_header, version_header,
-		      len, cipherbytes, my_keys.epk,
+		      len, my_keys.epk, cipherbytes,
 		      bufconcat(keys)]);
   }
 
   function decrypt_multi(bytes) {
-    var len = bytes2int(bytes.subarray(6,12));
+    var len = bytes2int(bytes.subarray(6, 12));
     if (len+108 > bytes.length) return null;
-    var offset = 12 + len + nacl.box.overheadLength;
-    var cipherbytes = bytes.subarray(12, offset);
-    var sender_key = bytes.subarray(offset, offset+=32);
+    var sender_key = bytes.subarray(12, 44);
+    var offset = 44 + len + nacl.box.overheadLength;
+    var cipherbytes = bytes.subarray(44, offset);
     while(offset<bytes.length) {
       var b = bytes.subarray(offset, offset+=48);
       if (b.length != 48) return null;
