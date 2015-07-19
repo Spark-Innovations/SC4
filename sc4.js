@@ -536,7 +536,7 @@ var sc4 = sc4 || {};
   var zeroNonce = new Uint8Array(nacl.secretbox.nonceLength);
 
   function encrypt_multi(bytes, recipient_list) {
-    var rx_pk_list = recipient_list; // FIXME
+    var rx_pk_list = recipient_list.map(get_rx_key);
     var key = nacl.randomBytes(nacl.secretbox.keyLength);
     var len = int2bytes(bytes.length, 6);
     var cipherbytes = nacl.secretbox(bytes, zeroNonce, key);
@@ -579,6 +579,9 @@ var sc4 = sc4 || {};
       return null;
     }
   }
+
+  // Test, until we get the UI hooked up:
+  // sc4.encrypt_multi_pt(sc4.bundle(null, 'text/plain', 'hello world'), [0])
 
   // For Windows, might need:
   // re=/\r\n|\n\r|\n|\r/g;
