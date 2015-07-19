@@ -441,6 +441,7 @@ var sc4 = sc4 || {};
   // Core SC4 code
 
   var encrypted_header = new Uint8Array([0x48, 0x2e, 0x1e]);
+  var multi_enc_header = new Uint8Array([0x48, 0x2e, 0x26]);
   var signature_header = new Uint8Array([0x48, 0x2e, 0x2c]);
   var    bundle_header = new Uint8Array([0x48, 0x2e, 0x1b]);
   var version_header = [0, 0, 0];
@@ -532,6 +533,38 @@ var sc4 = sc4 || {};
     return segments.join('');
   }
 
+  var zeroNonce = new Uint8Array(nacl.secretbox.nonceLength);
+
+  function encrypt_multi(bytes, rx_pk_list) {
+    var key = nacl.randomBytes(nacl.secretbox.keyLength);
+    var len = int2bytes(bytes.length, 6);
+    var cipherbytes = nacl.secretbox(bytes, zeroNonce, key);
+    var keys = [nacl.box(key, zeroNonce, my_keys.epk, my_keys.esk)];
+    for (var i=0; i<rx_pk_list.length; i++) {
+      keys.push(nacl.box(key, zeroNonce, rx_pk_list[i], my_keys.esk));
+    }
+    return bufconcat([multi_enc_header, version_header,
+		      len, cipherbytes, my_keys.epk,
+		      bufconcat(keys)]);
+  }
+
+  function decrypt_multi(bytes) {
+    var len = bytes2int(bytes.subarray(6,12));
+    if (len+108 > bytes.length) return null;
+    var offset = 12 + len + nacl.box.overheadLength;
+    var cipherbytes = bytes.subarray(12, offset);
+    var sender_key = bytes.subarray(offset, offset+=32);
+    while(offset<bytes.length) {
+      var b = bytes.subarray(offset, offset+=48);
+      if (b.length != 48) return null;
+      var key = nacl.box.open(b, zeroNonce, sender_key, my_keys.esk);
+      if (key) {
+	var msg = nacl.secretbox.open(cipherbytes, zeroNonce, key);
+	return (msg ? [bytes2string(msg), sender_key] : null);
+      }
+    }
+    return null;
+  }
 
   // For Windows, might need:
   // re=/\r\n|\n\r|\n|\r/g;
