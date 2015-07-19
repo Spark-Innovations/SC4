@@ -1016,6 +1016,7 @@ var sc4 = sc4 || {};
     generate_local_sc4, init, stopEvents, dragEnter, dragLeave, drop,
     handle_file_drop, process_dropped_files, encrypt, decrypt,
     encrypt_pt, decrypt_pt, signature, sign, verify_signature, sign_pt,
+    encrypt_multi, decrypt_multi,
     verify_signature_pt, combine4sig, bundle, unbundle, bundle_pt,
     unbundle_pt, sigcheck, sc4_typeof, virtual_click, export_as_email,
     make_download_link, export_as_download, export_my_key_string,
