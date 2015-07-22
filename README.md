@@ -120,11 +120,11 @@ Please send feedback, including bug reports, to sc4@sc4.us.
 
 My public key is:
 
-   ---START KEY---
-   X-sc4-content-type: public-key v0.2
-   From: ron@spark-innovations.com
-   Timestamp: Wed, 22 Jul 2015 19:55:37 GMT
-   C74bKoKVF7fU9YPg3T93KjayDgw1xBg4hiX8fgyKEyrP
-   2GzixEkG2rqAVeJiTQSbgPA7LiBPH2UcnruhGFBPMkK6
-   BpPtsVynbe7Ko2DicHPMNgPgSRkSPmh1qaCiUbZNepdk
-   ---END KEY---
+	---START KEY---
+	X-sc4-content-type: public-key v0.2
+	From: ron@spark-innovations.com
+	Timestamp: Wed, 22 Jul 2015 19:55:37 GMT
+	C74bKoKVF7fU9YPg3T93KjayDgw1xBg4hiX8fgyKEyrP
+	2GzixEkG2rqAVeJiTQSbgPA7LiBPH2UcnruhGFBPMkK6
+	BpPtsVynbe7Ko2DicHPMNgPgSRkSPmh1qaCiUbZNepdk
+	---END KEY---
