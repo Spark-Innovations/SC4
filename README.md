@@ -1,4 +1,12 @@
-### NEWS FLASH!
+# NEWS
+
+### August 2015
+
+SC4 now has a command-line version written in Python.  If crypto in
+the browser make you queasy, this is for you.  A PGP replacement in
+700 LOC (plus TweetNaCl).
+
+### June 2015
 
 SC4 has completed an [independent sucurity audit](audit-report.pdf)
 conducted by [Cure53](https://cure53.de).  The money quote:
@@ -8,7 +16,7 @@ edgy and unconventional yet reliable crypto tool. If certain
 limitations and constraints are respected by its users, SC4 indeed
 fills a formerly unpopulated gap in the world of browser crypto."
 
-### SC4 - Secure Communications for Mere Mortals
+# SC4 - Secure Communications for Mere Mortals
 
 SC4 is a web application that provides secure encrypted communications
 and secure digital signatures.  It is intended to eventually be a
