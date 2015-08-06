@@ -1,0 +1,34 @@
+SC4-py: a Python implementation of SC4.
+
+SC4 is an exercise in cryptographic minimalism.  It is a complete functional
+replacement for PGP (with the exception of the Web of Trust) in less than
+3000 lines of code, and nearly half of that (1225 lines) is just the
+Python bindings to the TweetNaCl C library (which itself is 771 LOC).
+
+The SC4 application itself is about 700 lines of Python code, but it includes
+all of PGP's core functionality, including digital signature generation and
+verification, and of course, file encryption and decryption.  SC4 even
+supports encryption for multiple recipients, though this is not exposed
+in the UI at the moment.
+
+This is an ALPHA release of SC4-PY.  SC4-WEB, on which SC4_PY is based, has
+gone through a security audit, but SC4-PY has not (yet) so don't use it for
+anything really mission critical yet.
+
+SC4-PY is copyright 2015 by Spark Innovations Inc.  It uses TweetNaCl as
+its core crypto, which is in the public domain.  SC4-PY is released here
+under the terms of a Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+International License.
+
+See http://creativecommons.org/licenses/by-nc-sa/4.0/ for details
+
+To use it, simply run make once to build the tweetnacl library.  Then
+just run ./sc4.py to run sc4.  The first time you run it, a random key
+will automatically be provisioned for you and stored in ~/.sc4keys.
+
+Usage summary:
+To encrypt a file:  sc4.py -e [file] [recipient]
+To sign a file:     sc4.py -s [file]
+To sign and encrypt a file:  sc4.py -se [file] [recipient]
+To decrypt a file, or install a public key:  sc4.py [file]
+To export your public key:  sc4.py -x
