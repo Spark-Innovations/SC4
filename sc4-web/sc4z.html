@@ -2286,6 +2286,7 @@ var sc4 = sc4 || {};
   // Core SC4 code
 
   var encrypted_header = new Uint8Array([0x48, 0x2e, 0x1e]);
+  var multi_enc_header = new Uint8Array([0x48, 0x2e, 0x26]);
   var signature_header = new Uint8Array([0x48, 0x2e, 0x2c]);
   var    bundle_header = new Uint8Array([0x48, 0x2e, 0x1b]);
   var version_header = [0, 0, 0];
@@ -2377,6 +2378,55 @@ var sc4 = sc4 || {};
     return segments.join('');
   }
 
+  var zeroNonce = new Uint8Array(nacl.secretbox.nonceLength);
+
+  function encrypt_multi(bytes, recipient_list) {
+    var rx_pk_list = recipient_list.map(get_rx_key);
+    var key = nacl.randomBytes(nacl.secretbox.keyLength);
+    var len = int2bytes(bytes.length, 6);
+    var cipherbytes = nacl.secretbox(bytes, zeroNonce, key);
+    var keys = [nacl.box(key, zeroNonce, my_keys.epk, my_keys.esk)];
+    for (var i=0; i<rx_pk_list.length; i++) {
+      keys.push(nacl.box(key, zeroNonce, rx_pk_list[i], my_keys.esk));
+    }
+    return bufconcat([multi_enc_header, version_header,
+		      len, my_keys.epk, cipherbytes,
+		      bufconcat(keys)]);
+  }
+
+  function decrypt_multi(bytes) {
+    var len = bytes2int(bytes.subarray(6, 12));
+    if (len+108 > bytes.length) return null;
+    var sender_key = bytes.subarray(12, 44);
+    var offset = 44 + len + nacl.box.overheadLength;
+    var cipherbytes = bytes.subarray(44, offset);
+    while(offset<bytes.length) {
+      var b = bytes.subarray(offset, offset+=48);
+      if (b.length != 48) return null;
+      var key = nacl.box.open(b, zeroNonce, sender_key, my_keys.esk);
+      if (key) {
+	var msg = nacl.secretbox.open(cipherbytes, zeroNonce, key);
+	var sdr = b58(sender_key).slice(0,8) + '... for multiple recipients';
+	return (msg ? [msg, b58(sender_key), sdr] : null);
+      }
+    }
+    return null;
+  }
+
+  function encrypt_multi_pt(thing, recipient_list) {
+    return split_into_lines(b64(encrypt_multi(thing, recipient_list)));
+  }
+
+  function decrypt_multi_pt(s) {
+    try {
+      return decrypt_multi(unb64(s.split('\n').join('')));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Test, until we get the UI hooked up:
+  // sc4.encrypt_multi_pt(sc4.bundle(null, 'text/plain', 'hello world'), [0])
 
   // For Windows, might need:
   // re=/\r\n|\n\r|\n|\r/g;
@@ -2491,6 +2541,9 @@ var sc4 = sc4 || {};
   var enc_pt_regex =
     new RegExp('^(' + preamble + ')?(\n){0,2}(SC4eAAAA[^]*)$');
 
+  var enc_pt_multi_regex =
+    new RegExp('^(' + preamble + ')?(\n){0,2}(SC4mAAAA[^]*)$');
+
   var key_regex =
     /X-sc4-content-type: public-key (.*)\nFrom: (.*)\nTimestamp: (.*)\n(.{32,44})\n(.{32,44})\n(.{32,44})/;
 
@@ -2500,12 +2553,14 @@ var sc4 = sc4 || {};
       if (bundle_regex.test(thing)) return 'bundle_pt';
       if (signature_regex.test(thing)) return 'signature_pt';
       if (key_regex.test(thing)) return "public_key";
+      if (enc_pt_multi_regex.test(thing)) return "multi_enc_pt";
       return null;
     } else if (thing.__proto__ == Uint8Array.prototype) {
       var hdr = thing.subarray(0,3);
       if (nacl.verify(hdr, encrypted_header)) return 'encrypted';
       if (nacl.verify(hdr, bundle_header)) return 'bundle';
       if (nacl.verify(hdr, signature_header)) return 'signature';
+      if (nacl.verify(hdr, multi_enc_header)) return 'multi_enc';
     }
     return null;
   }
@@ -2658,7 +2713,8 @@ var sc4 = sc4 || {};
     msg("Upload delivery is not implemented in this version of SC4.");
   }
 
-  var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt };
+  var decrypt_op_table = { encrypted : decrypt, encrypted_pt : decrypt_pt,
+    multi_enc: decrypt_multi, multi_enc_pt: decrypt_multi_pt };
   var unbundle_op_table = { bundle : unbundle, bundle_pt : unbundle_pt };
 
   var text_mime_types = ['text', 'text/plain', 'text/unknown'];
@@ -2685,7 +2741,7 @@ var sc4 = sc4 || {};
   function process_sc4_file(filename, sc4_type, content) {
     if (sc4_type == 'public_key') return import_key(content);
 
-    if (sc4_type=='encrypted_pt' && content.length>preamble.length &&
+    if (content.length>preamble.length &&
 	content.slice(0, preamble.length)==preamble) {
       content = content.slice(preamble.length);
     }
@@ -2828,6 +2884,7 @@ var sc4 = sc4 || {};
     generate_local_sc4, init, stopEvents, dragEnter, dragLeave, drop,
     handle_file_drop, process_dropped_files, encrypt, decrypt,
     encrypt_pt, decrypt_pt, signature, sign, verify_signature, sign_pt,
+    encrypt_multi, decrypt_multi, encrypt_multi_pt, decrypt_multi_pt,
     verify_signature_pt, combine4sig, bundle, unbundle, bundle_pt,
     unbundle_pt, sigcheck, sc4_typeof, virtual_click, export_as_email,
     make_download_link, export_as_download, export_my_key_string,
