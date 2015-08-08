@@ -1,14 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import nacl.raw as nacl
+import sys
+
+try:
+  import nacl.raw as nacl
+except:
+  print("Importing nacl failed.  Did you run 'make'?")
+  sys.exit()
+  pass
+
 import itertools
 import re
 import base64
 import datetime
 import os
 import subprocess
-import sys
 import getopt
 
 #####################################################################
