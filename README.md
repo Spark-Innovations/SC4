@@ -47,7 +47,7 @@ which is in the public domain.  SC4 also uses [JQuery](http://jquery.com),
 which is (published under the terms of the MIT license)
 [https://jquery.org/license/].  The remainder of the code
 (sc4.html, sc4.js, and sc4.css) is copyright (c) 2015 by Spark Innovations
-Inc., all rights reserved, and is released here under the terms of a
+Inc., and is released here under the terms of a
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">
 Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 License</a>.
