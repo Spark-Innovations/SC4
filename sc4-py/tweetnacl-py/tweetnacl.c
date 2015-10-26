@@ -5,7 +5,7 @@
 typedef unsigned long u32;
 typedef unsigned long long u64;
 typedef long long i64;
-typedef i64 gf[16];
+typedef i64 gf[16];     // GF = Galois Field, in this case a 16-byte integer
 extern void randombytes(u8 *,u64);
 
 static const u8
@@ -21,7 +21,9 @@ static const gf
   Y = {0x6658, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666},
   I = {0xa0b0, 0x4a0e, 0x1b27, 0xc4ee, 0xe478, 0xad2f, 0x1806, 0x2f43, 0xd7a7, 0x3dfb, 0x0099, 0x2b4d, 0xdf0b, 0x4fc1, 0x2480, 0x2b83};
 
-static u32 L32(u32 x,int c) { return (x << c) | ((x&0xffffffff) >> (32 - c)); }
+static u32 L32(u32 x,int c) {
+  return (x << c) | ((x&0xffffffff) >> (32 - c));
+}
 
 static u32 ld32(const u8 *x) {
   u32 u = x[3];
@@ -46,21 +48,25 @@ sv ts64(u8 *x,u64 u) {
   for (i = 7;i >= 0;--i) { x[i] = u; u >>= 8; }
 }
 
+// VN = Verify N, constant-time equality check over N bytes
+// Returns 0 for equal values, 1 otherwise
 static int vn(const u8 *x,const u8 *y,int n) {
   u32 i,d = 0;
   FOR(i,n) d |= x[i]^y[i];
   return (1 & ((d - 1) >> 8)) - 1;
 }
 
+// 16-byte constant-time equality check
 int crypto_verify_16(const u8 *x,const u8 *y) {
   return vn(x,y,16);
 }
 
-int crypto_verify_32(const u8 *x,const u8 *y)
-{
+// 32-byte constant-time equality check
+int crypto_verify_32(const u8 *x,const u8 *y) {
   return vn(x,y,32);
 }
 
+// Salsa20 cipher.  k=Key, c=nonce, h=flag, 0=regular XSalsa, 1=HSalsa
 sv core(u8 *out,const u8 *in,const u8 *k,const u8 *c,int h) {
   u32 w[16],x[16],y[16],t[4];
   int i,j,m;
@@ -96,8 +102,9 @@ sv core(u8 *out,const u8 *in,const u8 *k,const u8 *c,int h) {
       st32(out+4*i,x[5*i]);
       st32(out+16+4*i,x[6+i]);
     }
-  } else
+  } else {
     FOR(i,16) st32(out + 4 * i,x[i] + y[i]);
+  }
 }
 
 int crypto_core_salsa20(u8 *out,const u8 *in,const u8 *k,const u8 *c) {
