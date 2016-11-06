@@ -8,7 +8,7 @@ the browser make you queasy, this is for you.  A PGP replacement in
 
 ### June 2015
 
-SC4 has completed an [independent sucurity audit](audit-report.pdf)
+SC4 has completed an [independent security audit](audit-report.pdf)
 conducted by [Cure53](https://cure53.de).  The money quote:
 
 "Our verdict is that SC4 has developed from a proof-of-concept to an
