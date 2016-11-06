@@ -229,7 +229,6 @@ where
 	
 	[timestamp] is the time the key file was created in RFC1124 UTC format (i.e. what is produced by new Date().toUTCString().
 	
-	[public key] is the user's public signing key (from which the encryption
-key can be derived) encoded in base58.
+	[public key] is the user's public signing key (from which the encryption key can be derived) encoded in base58.
 	
 	[signature] is the Ed25519 signature of the entire preceding content, base58-encoded, and split into two lines.
