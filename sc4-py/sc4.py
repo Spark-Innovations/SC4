@@ -1,6 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+#####################################################################
+#
+# sc4.py -- Secure Communications for Mere Mortals
+#
+# Copyright (c) 2015 by Spark Innovations, Inc.
+#
+# Released under the terms of a
+# Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+# International License.
+# See http://creativecommons.org/licenses/by-nc-sa/4.0/ for details
+#
+#####################################################################
+
 import sys
 
 try:
@@ -17,19 +30,8 @@ import datetime
 import os
 import subprocess
 import getopt
-
-#####################################################################
-#
-# sc4.py -- Secure Communications for Mere Mortals
-#
-# Copyright (c) 2015 by Spark Innovations, Inc.
-#
-# Released under the terms of a
-# Creative Commons Attribution-NonCommercial-ShareAlike 4.0
-# International License.
-# See http://creativecommons.org/licenses/by-nc-sa/4.0/ for details
-#
-#####################################################################
+import glob
+from getpass import getpass
 
 #############################################
 #
@@ -177,6 +179,9 @@ def wordify(age):
   age = round(age/30)
   return 'about ' + str(int(age)) + ' months ago'
 
+def pbkdf(s):
+  for i in xrange(0,10000): s = hash(s)
+  return s[0:32]
 
 ############################################
 #
@@ -218,8 +223,9 @@ class SecretKey(PublicKey):
   
   def __repr__(self): return "<Secret key %s>" % self.id
   
-  def serialize(self):
-    return 'SK %s %s' % (b58(self.ssk[0:32]), self.email)
+  def serialize(self, pw):
+    s = crypto_secretbox(self.ssk[0:32], zeroNonce, pbkdf(pw))
+    return 'SK %s %s' % (b58(s), self.email)
   
   def encrypt(self, bytes, nonce, rx_epk):
     return crypto_box(bytes, nonce, rx_epk, self.esk)
@@ -254,15 +260,66 @@ def key_from_seed(email, seed): return ssk2key(email, hash(seed)[0:32])
 
 def random_key(email='test'): return key_from_seed(email, random_bytes(64))
 
-def deserialize_key(s):
-  type, s, email = s.split(' ', 2)
-  return {"PK": spk2key, "SK": ssk2key}[type](email, unb58(s))
+def deserialize_public_key(s):
+  type, ks_b58, email = s.split(' ', 2)
+  ks = unb58(ks_b58)
+  if type=='PK': return spk2key(email, ks)
+  return None
 
-keyfile=os.path.expanduser("~/.sc4keys")
+def maybe_deserialize_secret_key(s, pw):
+  type, ks_b58, email = s.split(' ', 2)
+  ks = unb58(ks_b58)
+  if type=='PK': return spk2key(email, ks)
+  try: seed = crypto_secretbox_open(ks, zeroNonce, pbkdf(pw))
+  except: return None
+  return ssk2key(email, seed)
+
+def get_passphrase_for_key(s):
+  k = maybe_deserialize_secret_key(s, '')
+  if k:
+    printt("Warning: your secret key is not protected by a pass phrase.")
+    return ''
+  while 1:
+    pw = getpass("Please enter your pass phrase: ")
+    k = maybe_deserialize_secret_key(s, pw)
+    if k: return pw
+    print("Incorrect pass phrase")
+    pass
+  pass  
+
+def deserialize_secret_keys(l):
+  pw = get_passphrase_for_key(l[0])
+  return [maybe_deserialize_secret_key(k, pw) for k in l]
+
+def keyfiles(prefix='~/.sc4_'):
+  prefix = os.path.expanduser(prefix)
+  pkpath = prefix + 'pk'
+  skpaths = glob.glob(prefix + 'sk_*')
+  if len(skpaths)>1:
+    raise Exception("Multiple secret key files found: " + str(skpaths))
+  if len(skpaths)==1: return (pkpath, skpaths[0], True)
+  return (pkpath, prefix + 'sk_' + b58(random_bytes(10)), False)
+
 my_keys = []
 rx_keys = []
 my_key = None
 
+def store_secret_keys(skfile):
+  global my_keys
+  with open(skfile, 'w') as f:
+    os.chmod(skfile, 0600)
+    pw = getpass("Please enter a pass phrase: ")
+    for k in my_keys: f.write(k.serialize(pw) + '\n')
+    pass
+  return
+
+def store_public_keys(pkfile):
+  global rx_keys
+  with open(pkfile,'w') as f:
+    for k in rx_keys: f.write(k.serialize() + '\n')
+    pass
+  return
+  
 def string_prefix_equal(s1, s2):
   n = min(len(s1), len(s2))
   return s1[0:n]==s2[0:n]
@@ -274,39 +331,31 @@ def find_keys(s):
     pass
   return result
 
-def store_keys():
-  with open(keyfile,'w') as f:
-    os.chmod(keyfile, 0600)
-    for k in my_keys:
-      f.write(k.serialize())
-      f.write('\n')
-      pass
-    for k in rx_keys:
-      f.write(k.serialize())
-      f.write('\n')
-      pass
+def generate_key(skfile):
+  global my_keys
+  print("Provisioning a secret key")
+  email = None
+  while not email:
+    email = raw_input("Please enter your email address: ")
     pass
-  pass
+  my_keys = [random_key(email)]
+  store_secret_keys(skfile)
+  return
 
 def setup_keys():
-  global my_keys, my_key, rx_keys, keyfile
-  try:
-    with open(keyfile) as f: s = f.read()
-    if not s: raise Exception()
-  except:
-    print("Provisioning a secret key")
-    email = None
-    while not email:
-      email = raw_input("Please enter your email address: ")
-      pass
-    my_keys = [random_key(email)]
-    store_keys()
-    with open(keyfile) as f: s = f.read()
-    pass
-  l = s.split('\n')
-  my_keys = [deserialize_key(l[0])]
+  global my_keys, my_key, rx_keys
+  pkfile, skfile, flag = keyfiles()
+  if not flag: generate_key(skfile)
+  with open(skfile) as f: s = f.read()
+  l = s.strip().split('\n')
+  my_keys = deserialize_secret_keys(l)
   my_key = my_keys[0]
-  rx_keys = map(deserialize_key, l[1:-1])
+  try:
+    with open(pkfile) as f: s = f.read()
+    rx_keys = map(deserialize_public_key, s.strip().split('\n'))
+  except:
+    store_public_keys(pkfile)
+    pass
   pass
 
 ################################################################
@@ -360,10 +409,10 @@ def encrypt(bytes, rx_key):
   nonce = bytearray(nonce)
   nonce[0] = (nonce[0] & 0xFC) | (u8a_cmp(my_pk, rx_pk) & 3)
   nonce = bstr(nonce)
-  bstr(bytes)
-  bstr(nonce)
-  bstr(rx_pk)
-  bstr(my_sk)
+#  bstr(bytes)
+#  bstr(nonce)
+#  bstr(rx_pk)
+#  bstr(my_sk)
   cipherbytes = crypto_box(bytes, nonce, rx_pk, my_sk)
   return encrypted_header + length + nonce + my_pk + cipherbytes
 
@@ -616,7 +665,7 @@ def import_key(s):
   s = raw_input("Do you want to install it in your recipients list? ")
   if (len(s)>0 and s[0].lower()=='y'):
     rx_keys.append(spk2key(email, spk))
-    store_keys()
+    store_public_keys()
     pass
   return (spk, email, age)
 
@@ -767,6 +816,7 @@ def main():
   print("Encrypted content written to " + outfile)
   return
 
-setup_keys()
-
-if __name__=='__main__': main()
+if __name__=='__main__':
+  setup_keys()
+  main()
+  pass
