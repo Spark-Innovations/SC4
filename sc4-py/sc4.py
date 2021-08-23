@@ -307,7 +307,7 @@ my_key = None
 def store_secret_keys(skfile):
   global my_keys
   with open(skfile, 'w') as f:
-    os.chmod(skfile, 0600)
+    os.chmod(skfile, 0o600)
     pw = getpass("Please enter a pass phrase: ")
     for k in my_keys: f.write(k.serialize(pw) + '\n')
     pass
